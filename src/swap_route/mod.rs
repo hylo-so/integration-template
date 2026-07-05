@@ -30,6 +30,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_instruction::{AccountMeta, Instruction};
 use solana_pubkey::Pubkey;
 
+use crate::hylo::{HyloOp, hylo_op};
 use crate::trading_venue::{
     QuoteRequest, TradingVenue, error::TradingVenueError, protocol::PoolProtocol,
 };
@@ -49,15 +50,11 @@ pub const ROUTE_WEIGHT_ALL: u32 = 1_000_000_000;
 #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Venue {
     RaydiumAmm,
-    // FILL_IN: add your venue variant here, in the SAME position as in
-    // `state.rs`. Include any CPI parameters the router must pass to your venue
-    // adapter, such as direction flags.
-    TemplateVenue { zero_for_one: bool },
-}
-
-#[allow(dead_code)]
-fn fill_in_route_venue_variant() -> ! {
-    todo!("add your route Venue variant in the same position as the program enum")
+    /// Hylo V2 exchange. `op` tells the on-chain adapter which exchange
+    /// instruction (discriminator + accounts shape) executes this leg.
+    HyloExchange {
+        op: HyloOp,
+    },
 }
 
 impl Venue {
@@ -96,10 +93,10 @@ pub fn protocol_to_venue(
 ) -> Result<Venue, TradingVenueError> {
     match venue.protocol() {
         PoolProtocol::RaydiumAMM => Ok(Venue::RaydiumAmm),
-        // FILL_IN: map your PoolProtocol variant to your Venue variant.
-        PoolProtocol::YourPoolProtocol => {
-            let _ = (venue, request);
-            todo!("map YourPoolProtocol to your Venue variant")
+        PoolProtocol::HyloExchange => {
+            let op = hylo_op(&request.input_mint, &request.output_mint)
+                .ok_or(TradingVenueError::InvalidMint(request.input_mint.into()))?;
+            Ok(Venue::HyloExchange { op })
         }
     }
 }
@@ -342,15 +339,18 @@ mod tests {
     fn venue_borsh_bytes_are_stable() {
         assert_eq!(Venue::RaydiumAmm.to_borsh_bytes(), vec![0]);
         assert_eq!(
-            Venue::TemplateVenue {
-                zero_for_one: false,
+            Venue::HyloExchange {
+                op: HyloOp::MintStablecoin,
             }
             .to_borsh_bytes(),
             vec![1, 0]
         );
         assert_eq!(
-            Venue::TemplateVenue { zero_for_one: true }.to_borsh_bytes(),
-            vec![1, 1]
+            Venue::HyloExchange {
+                op: HyloOp::SwapLstToLst,
+            }
+            .to_borsh_bytes(),
+            vec![1, 6]
         );
     }
 }
