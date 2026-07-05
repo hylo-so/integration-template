@@ -13,7 +13,6 @@
 //! access. Unlike the RPC-gated suites, it always runs.
 
 use solana_pubkey::{Pubkey, pubkey};
-
 use titan_integration_template::example::{
   RAYDIUM_AMM_PROGRAM_ID, parse_pool_creations,
 };
@@ -32,9 +31,10 @@ const USDC_MINT: Pubkey =
 /// Build a Raydium `initialize2` instruction in its exact on-chain shape.
 ///
 /// Data is the `InitializeInstruction2` layout prefixed with the tag byte `1`:
-/// `[1, nonce: u8, open_time: u64, init_pc_amount: u64, init_coin_amount: u64]`.
-/// Accounts follow the program's 21-account ordering; only the new pool (index
-/// 4), the coin mint (8) and the pc mint (9) carry information the parser needs.
+/// `[1, nonce: u8, open_time: u64, init_pc_amount: u64, init_coin_amount:
+/// u64]`. Accounts follow the program's 21-account ordering; only the new pool
+/// (index 4), the coin mint (8) and the pc mint (9) carry information the
+/// parser needs.
 fn raydium_initialize2(
   pool: Pubkey,
   coin_mint: Pubkey,

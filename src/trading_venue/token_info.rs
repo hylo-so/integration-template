@@ -9,10 +9,8 @@ use solana_account::Account;
 use solana_pubkey::Pubkey;
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token::solana_program::clock::Epoch;
-use spl_token_2022::{
-  extension::{BaseStateWithExtensions, StateWithExtensions},
-  state::Mint,
-};
+use spl_token_2022::extension::{BaseStateWithExtensions, StateWithExtensions};
+use spl_token_2022::state::Mint;
 
 use crate::trading_venue::error::TradingVenueError;
 
@@ -26,10 +24,10 @@ pub const TOKEN_2022_PROGRAM_ID: Pubkey = spl_token_2022::ID;
 ///
 /// This includes metadata derived from the mint account such as:
 ///
-/// - The mint's public key  
-/// - Decimals (UI precision)  
-/// - Whether the mint uses Token-2022  
-/// - Optional transfer-fee configuration  
+/// - The mint's public key
+/// - Decimals (UI precision)
+/// - Whether the mint uses Token-2022
+/// - Optional transfer-fee configuration
 ///
 /// Titan venues expose an array/slice of `TokenInfo` to describe the tokens
 /// they support on a per-pool basis.
@@ -63,9 +61,9 @@ impl TokenInfo {
   /// `transfer_fee` and `maximum_fee` remain `None`.
   ///
   /// # Arguments
-  /// - `pubkey` — the mint address  
-  /// - `account` — the raw Solana account containing mint data  
-  /// - `epoch` — the current epoch, used for fetching epoch-indexed fee values  
+  /// - `pubkey` — the mint address
+  /// - `account` — the raw Solana account containing mint data
+  /// - `epoch` — the current epoch, used for fetching epoch-indexed fee values
   ///
   /// # Errors
   /// Returns `TradingVenueError::DeserializationFailed` if the mint account

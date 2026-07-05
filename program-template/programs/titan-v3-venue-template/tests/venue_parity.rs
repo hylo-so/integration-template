@@ -1,8 +1,9 @@
 use anchor_lang::AnchorSerialize;
 use titan_integration_template::hylo::HyloOp as RouteBuilderHyloOp;
 use titan_integration_template::swap_route::Venue as RouteBuilderVenue;
-use titan_v3_venue_template::state::HyloOp as ProgramHyloOp;
-use titan_v3_venue_template::state::Venue as ProgramVenue;
+use titan_v3_venue_template::state::{
+  HyloOp as ProgramHyloOp, Venue as ProgramVenue,
+};
 
 #[test]
 fn venue_enum_matches_route_builder() {
@@ -52,9 +53,10 @@ fn venue_enum_matches_route_builder() {
     let program_bytes = program.try_to_vec().unwrap();
     let route_builder_bytes = route_builder.to_borsh_bytes();
     assert_eq!(
-            program_bytes, route_builder_bytes,
-            "Venue {program:?} serializes differently between program and route builder — the two \
-             enums have drifted; check that variants match in name and order",
-        );
+      program_bytes, route_builder_bytes,
+      "Venue {program:?} serializes differently between program and route \
+       builder — the two enums have drifted; check that variants match in \
+       name and order",
+    );
   }
 }

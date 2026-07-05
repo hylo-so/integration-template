@@ -2,8 +2,8 @@
 //!
 //! `RpcClientCache` wraps a `RpcClient` and provides a thread-safe, in-memory
 //! cache of Solana accounts. This accelerates venue state updates by avoiding
-//! redundant RPC calls and ensures consistent account snapshots when integrating
-//! multiple pools and venues.
+//! redundant RPC calls and ensures consistent account snapshots when
+//! integrating multiple pools and venues.
 //!
 //! The cache implements the `AccountsCache` trait, which is used by Titan's
 //! trading venues during:
@@ -25,7 +25,8 @@ use solana_rpc_client::nonblocking::rpc_client::RpcClient;
 use crate::account_caching::{AccountCacheError, AccountsCache};
 
 /// Internal alias for the in-memory account cache.
-/// Stores `Some(Account)` for found accounts and `None` for known-missing accounts.
+/// Stores `Some(Account)` for found accounts and `None` for known-missing
+/// accounts.
 ///
 /// Using `Option<Account>` avoids retrying missing accounts on every request.
 type AccountCache = DashMap<Pubkey, Option<Account>>;
@@ -35,8 +36,10 @@ type AccountCache = DashMap<Pubkey, Option<Account>>;
 /// The cache performs the following optimizations:
 ///
 /// - **Single-account fetch**: Cache hits avoid RPC calls entirely.
-/// - **Multi-account fetch**: Groups unknown keys into a single `get_multiple_accounts` RPC call.
-/// - **Caching negative lookups**: Accounts that consistently return `None` are also stored.
+/// - **Multi-account fetch**: Groups unknown keys into a single
+///   `get_multiple_accounts` RPC call.
+/// - **Caching negative lookups**: Accounts that consistently return `None` are
+///   also stored.
 /// - **Thread-safe reads/writes** using `DashMap`.
 pub struct RpcClientCache {
   rpc_client: RpcClient,

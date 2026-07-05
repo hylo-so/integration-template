@@ -16,9 +16,8 @@ use std::fmt::Display;
 use solana_pubkey::Pubkey;
 use thiserror::Error;
 
-use crate::{
-  account_caching::AccountCacheError, trading_venue::protocol::PoolProtocol,
-};
+use crate::account_caching::AccountCacheError;
+use crate::trading_venue::protocol::PoolProtocol;
 
 /// Wrapper type for attaching additional context to an error.
 ///
@@ -27,8 +26,8 @@ use crate::{
 /// all those representations in a unified, displayable type.
 ///
 /// Variants:
-/// - `Pubkey` — attach a specific Solana account address  
-/// - `String` — arbitrary owned string describing the error  
+/// - `Pubkey` — attach a specific Solana account address
+/// - `String` — arbitrary owned string describing the error
 /// - `StaticStr` — lightweight static string reference
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorInfo {
@@ -82,36 +81,36 @@ impl Display for ErrorInfo {
 /// Error variants fall into several categories:
 ///
 /// **Account/State issues**  
-/// - `NoAccountFound`  
-/// - `FailedToFetchAccountData`  
-/// - `FailedToFetchMultipleAccountData`  
-/// - `DeserializationFailed`  
-/// - `MissingState`  
+/// - `NoAccountFound`
+/// - `FailedToFetchAccountData`
+/// - `FailedToFetchMultipleAccountData`
+/// - `DeserializationFailed`
+/// - `MissingState`
 /// - `NotInitialized`
 ///
 /// **Mint / token issues**  
-/// - `InvalidMint`  
-/// - `TokenInfoIndexError`  
+/// - `InvalidMint`
+/// - `TokenInfoIndexError`
 ///
 /// **Math issues**  
-/// - `CheckedMathError`  
-/// - `MathError`  
+/// - `CheckedMathError`
+/// - `MathError`
 ///
 /// **Swap/venue behavior issues**  
-/// - `AmmMethodError`  
-/// - `ExactOutNotSupported`  
-/// - `UnsupportedVenue`  
+/// - `AmmMethodError`
+/// - `ExactOutNotSupported`
+/// - `UnsupportedVenue`
 /// - `InactivePoolError`
 ///
 /// **Boundary search & quoting issues**  
-/// - `BoundarySearchFailed`  
+/// - `BoundarySearchFailed`
 /// - `NoQuotableValue`
 ///
 /// **Internal/unexpected issues**  
-/// - `SomethingWentWrong` (boxed error for unexpected failures)  
+/// - `SomethingWentWrong` (boxed error for unexpected failures)
 ///
 /// **Infrastructure issues**  
-/// - `CacheUnlockFailed`  
+/// - `CacheUnlockFailed`
 /// - `AccountCacheError` (converted via `#[from]`)
 #[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
@@ -132,7 +131,8 @@ pub enum TradingVenueError {
   #[error("Failed to fetch account data: {0}")]
   FailedToFetchAccountData(ErrorInfo),
 
-  /// Mint or pool account could not be deserialized into expected data structures.
+  /// Mint or pool account could not be deserialized into expected data
+  /// structures.
   #[error("Failed to deserialize account data: {0}")]
   DeserializationFailed(ErrorInfo),
 
@@ -163,8 +163,8 @@ pub enum TradingVenueError {
   #[error("Error from method: {0}")]
   AmmMethodError(ErrorInfo),
 
-  /// Venues must currently support `ExactIn`; this error is returned if a caller
-  /// requests an unsupported `ExactOut` quote or swap.
+  /// Venues must currently support `ExactIn`; this error is returned if a
+  /// caller requests an unsupported `ExactOut` quote or swap.
   #[error("Exact Out swap type is not supported")]
   ExactOutNotSupported,
 
@@ -189,7 +189,8 @@ pub enum TradingVenueError {
   #[error("Unsupported venue: {0}")]
   UnsupportedVenue(ErrorInfo),
 
-  /// A `TokenInfo` index was requested that does not exist in the venue's metadata.
+  /// A `TokenInfo` index was requested that does not exist in the venue's
+  /// metadata.
   #[error("Token info does not extend to index {0}")]
   TokenInfoIndexError(usize),
 

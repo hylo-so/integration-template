@@ -1,20 +1,17 @@
+use std::convert::TryFrom;
+
 use arrayref::array_ref;
 use safe_transmute::{transmute_one_pedantic, transmute_to_bytes};
 use solana_account::{Account, ReadableAccount};
 use solana_instruction::Instruction;
 use solana_program::program_pack::Pack;
 use solana_pubkey::Pubkey;
-use std::convert::TryFrom;
 
-use crate::{
-  example::raydium::{
-    self,
-    math::{CheckedCeilDiv, SwapDirection, U128},
-    processor::{self, AUTHORITY_AMM},
-    state::{Loadable, TEN_THOUSAND},
-  },
-  trading_venue::error::TradingVenueError,
-};
+use crate::example::raydium::math::{CheckedCeilDiv, SwapDirection, U128};
+use crate::example::raydium::processor::{self, AUTHORITY_AMM};
+use crate::example::raydium::state::{Loadable, TEN_THOUSAND};
+use crate::example::raydium::{self};
+use crate::trading_venue::error::TradingVenueError;
 
 #[derive(Clone, Copy, Debug)]
 pub struct AmmKeys {
@@ -175,8 +172,8 @@ fn min_amount_with_slippage(input_amount: u64, slippage_bps: u64) -> u64 {
   let mult = u128::from(TEN_THOUSAND.saturating_sub(slippage_bps));
   // Should be impossible to multiply two u64 values and overflow a u128.
   let dividend = input_expanded.checked_mul(mult).unwrap();
-  // mult <= TEN_THOUSAND, so result can never be greater than input amount, which fit in a u64,
-  // so should be safe to unwrap here.
+  // mult <= TEN_THOUSAND, so result can never be greater than input amount,
+  // which fit in a u64, so should be safe to unwrap here.
   // Able to use wrapping_div as we know the divisor isn't 0.
   u64::try_from(dividend.wrapping_div(TEN_THOUSAND_U128)).unwrap()
 }

@@ -115,8 +115,9 @@ fn render_layers(title: &str, done: [bool; 4]) -> String {
   s.push_str(&render_subheader("Layers"));
   s.push_str("  Status  Layer            Detail\n");
   s.push_str(
-        "  ------  ---------------  ------------------------------------------------------------\n",
-    );
+    "  ------  ---------------  \
+     ------------------------------------------------------------\n",
+  );
   for (i, (layer, desc)) in LAYERS.iter().enumerate() {
     s.push_str(&format!(
       "  {:<6}  {:<15}  {}\n",
@@ -156,7 +157,9 @@ fn render_simulation() -> String {
     };
 
   format!(
-    "\n{}  Status    Detail\n  --------  ------------------------------------------------------------\n  {status:<8}  {detail}\n",
+    "\n{}  Status    Detail\n  --------  \
+     ------------------------------------------------------------\n  \
+     {status:<8}  {detail}\n",
     render_subheader("Simulation")
   )
 }
@@ -170,7 +173,10 @@ fn render_summary(title: &str, done: [bool; 4]) -> String {
   };
 
   format!(
-    "\n{}  Target      Status             Detail\n  ----------  -----------------  ------------------------------------------------------------\n  {title:<10}  {count}/4 layers wired  {detail}\n",
+    "\n{}  Target      Status             Detail\n  ----------  \
+     -----------------  \
+     ------------------------------------------------------------\n  \
+     {title:<10}  {count}/4 layers wired  {detail}\n",
     render_subheader("Summary")
   )
 }
@@ -265,6 +271,6 @@ fn integration_scorecard() {
   assert!(
     example_done.iter().all(|d| *d),
     "the reference (example) integration is incomplete or broken — its layers \
-         should all be wired",
+     should all be wired",
   );
 }

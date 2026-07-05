@@ -14,11 +14,10 @@
 
 #![allow(dead_code)] // each test binary uses a subset of these helpers.
 
-use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
+use std::{env, fs};
 
 use litesvm::LiteSVM;
 use solana_account::{Account, ReadableAccount, WritableAccount};
@@ -116,9 +115,10 @@ fn ensure_route_program_is_fresh(route_so: &Path) -> Result<(), String> {
 
   if route_mtime < source_mtime {
     return Err(format!(
-            "stale built route program {} — run `make build-program` from the repo root",
-            route_so.display()
-        ));
+      "stale built route program {} — run `make build-program` from the repo \
+       root",
+      route_so.display()
+    ));
   }
 
   Ok(())
@@ -138,12 +138,15 @@ fn ensure_program_dump(
       .map_err(|e| format!("failed to create dump dir: {e}"))?;
   }
   let output = Command::new("solana")
-        .args(["--url", rpc_url, "program", "dump", &program.to_string()])
-        .arg(path)
-        .output()
-        .map_err(|e| {
-            format!("failed to run `solana program dump` (is the Solana CLI installed?): {e}")
-        })?;
+    .args(["--url", rpc_url, "program", "dump", &program.to_string()])
+    .arg(path)
+    .output()
+    .map_err(|e| {
+      format!(
+        "failed to run `solana program dump` (is the Solana CLI installed?): \
+         {e}"
+      )
+    })?;
   if !output.status.success() {
     return Err(format!(
       "`solana program dump {program}` failed: {}",
@@ -273,7 +276,8 @@ fn build_route_instruction(
     AccountMeta::new_readonly(spl_token_2022::ID, false),
     AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
     AccountMeta::new_readonly(spl_associated_token_account::ID, false),
-    // Optional route accounts. Use this program id as the Anchor Option placeholder.
+    // Optional route accounts. Use this program id as the Anchor Option
+    // placeholder.
     AccountMeta::new_readonly(titan_v3_venue_template::ID, false),
     AccountMeta::new_readonly(titan_v3_venue_template::ID, false),
     AccountMeta::new_readonly(titan_v3_venue_template::ID, false),
@@ -284,7 +288,8 @@ fn build_route_instruction(
   ];
 
   // Build the venue leg from the venue swap instruction: it clears the
-  // TitanPDA signer flag, appends the venue program id, and computes n_accounts.
+  // TitanPDA signer flag, appends the venue program id, and computes
+  // n_accounts.
   let (spec, leg_accounts) =
     build_swap_leg(venue, request, titan_pda, 0, 1, ROUTE_WEIGHT_ALL).unwrap();
   accounts.extend(leg_accounts);
@@ -429,8 +434,9 @@ fn sample_amounts(lower: u64, upper: u64) -> Vec<u64> {
     .collect()
 }
 
-/// Execute `swap_route_v3` against the venue across every declared direction and
-/// a range of sizes, asserting the simulated output matches the off-chain quote.
+/// Execute `swap_route_v3` against the venue across every declared direction
+/// and a range of sizes, asserting the simulated output matches the off-chain
+/// quote.
 pub async fn run_swap_route<V: RouteVenue>(config: RouteConfig) {
   init_test_logger();
 

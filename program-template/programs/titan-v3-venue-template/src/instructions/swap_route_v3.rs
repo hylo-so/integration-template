@@ -1,8 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program::{invoke, invoke_signed};
 use anchor_spl::associated_token::spl_associated_token_account::instruction::create_associated_token_account_idempotent;
-use anchor_spl::token::spl_token;
-use anchor_spl::token::{transfer, Transfer};
+use anchor_spl::token::{spl_token, transfer, Transfer};
 use anchor_spl::token_2022::{
   close_account, CloseAccount, ID as TOKEN_PROGRAM_2022_ID,
 };
@@ -47,9 +46,10 @@ pub struct SwapRouteV3<'info> {
 /// [mints..2*mints] mint accounts aligned with the ATAs above.
 /// [2*mints..N] venue CPI accounts for each swap leg.
 ///
-/// Each swap leg must append the venue program id as the final account for that leg.
-/// `n_accounts` includes that program id. The dispatcher passes all leg accounts to
-/// `invoke_signed`, but omits the final program account from the venue's `AccountMeta`s.
+/// Each swap leg must append the venue program id as the final account for that
+/// leg. `n_accounts` includes that program id. The dispatcher passes all leg
+/// accounts to `invoke_signed`, but omits the final program account from the
+/// venue's `AccountMeta`s.
 impl SwapRouteV3<'_> {
   pub fn execute<'info>(
     ctx: Context<'_, '_, 'info, 'info, SwapRouteV3<'info>>,

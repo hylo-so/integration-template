@@ -20,13 +20,11 @@ use solana_account::Account;
 use solana_instruction::Instruction;
 use solana_pubkey::Pubkey;
 
-use crate::{
-  account_caching::AccountsCache,
-  trading_venue::{
-    bounds::find_boundaries, error::TradingVenueError, protocol::PoolProtocol,
-    token_info::TokenInfo,
-  },
-};
+use crate::account_caching::AccountsCache;
+use crate::trading_venue::bounds::find_boundaries;
+use crate::trading_venue::error::TradingVenueError;
+use crate::trading_venue::protocol::PoolProtocol;
+use crate::trading_venue::token_info::TokenInfo;
 
 /// Describes which type of swap the user is performing.
 ///
@@ -46,9 +44,11 @@ pub enum SwapType {
   ExactOut,
 }
 
-/// Request structure passed to venue `quote()` and `generate_swap_instruction()`.
+/// Request structure passed to venue `quote()` and
+/// `generate_swap_instruction()`.
 ///
-/// All amounts are denominated in integer atom units (not scaled to UI decimals).
+/// All amounts are denominated in integer atom units (not scaled to UI
+/// decimals).
 #[derive(Debug, Clone)]
 pub struct QuoteRequest {
   /// Mint of the token the user is providing.
@@ -83,10 +83,12 @@ pub struct QuoteResult {
   /// Expected number of output atoms produced by the venue.
   pub expected_output: u64,
 
-  /// Indicates whether the pool has insufficient liquidity to consume the full input.
+  /// Indicates whether the pool has insufficient liquidity to consume the full
+  /// input.
   ///
   /// For example, if a pool only has enough liquidity for half of the provided
-  /// input, this flag should be set to `true` and `amount = request.amount / 2`.
+  /// input, this flag should be set to `true` and `amount = request.amount /
+  /// 2`.
   pub not_enough_liquidity: bool,
 
   /// Price at the requested amount.
@@ -110,21 +112,24 @@ pub struct QuoteResult {
   /// `request.amount` and `expected_output`. At `amount == 0` this is the
   /// venue's *spot price*.
   ///
-  /// How you obtain the derivative is up to you. Titan does not prescribe a method, but
-  /// the value **must** satisfy the invariants described on [`TradingVenue::quote`]:
-  /// it must be positive on a valid quote, non-increasing as `amount` grows
-  /// (concavity), and consistent with the realized output (the mean value
-  /// theorem). These properties are exercised by the pricing test suite. You **must** provide
-  /// a spot price at 0.
+  /// How you obtain the derivative is up to you. Titan does not prescribe a
+  /// method, but the value **must** satisfy the invariants described on
+  /// [`TradingVenue::quote`]: it must be positive on a valid quote,
+  /// non-increasing as `amount` grows (concavity), and consistent with the
+  /// realized output (the mean value theorem). These properties are
+  /// exercised by the pricing test suite. You **must** provide a spot price
+  /// at 0.
   pub price: f64,
 }
 
-/// A convenience trait for converting on-chain accounts into structured pool/venue state.
+/// A convenience trait for converting on-chain accounts into structured
+/// pool/venue state.
 ///
 /// Implementers are responsible for performing any deserialization necessary
 /// to reconstruct on-chain pool state for their venue.
 pub trait FromAccount {
-  /// Parse an on-chain Solana account into the venue’s internal state structure.
+  /// Parse an on-chain Solana account into the venue’s internal state
+  /// structure.
   ///
   /// `pubkey` is the address of the account; `account` is its data.
   fn from_account(
@@ -142,14 +147,16 @@ pub trait FromAccount {
 /// that must be included in the ALT in order to successfully compress swaps.
 #[async_trait]
 pub trait AddressLookupTableTrait {
-  /// Return a list of pubkeys that should be inserted into an address lookup table.
+  /// Return a list of pubkeys that should be inserted into an address lookup
+  /// table.
   async fn get_lookup_table_keys(
     &self,
     accounts_cache: Option<&dyn AccountsCache>,
   ) -> Result<Vec<Pubkey>, TradingVenueError>;
 }
 
-/// Public template trait describing an AMM or trading venue for Titan integration.
+/// Public template trait describing an AMM or trading venue for Titan
+/// integration.
 ///
 /// Any AMM, orderbook, or custom liquidity engine must implement this trait
 /// to be usable by Titan’s routing system.
@@ -243,8 +250,8 @@ pub trait TradingVenue {
   /// Compute a quote for the given swap parameters.
   ///
   /// **Implementer requirement:** the venue **must** handle zero input amounts
-  /// without panicking or returning an error. Titan sometimes requests zero-input
-  /// quotes.
+  /// without panicking or returning an error. Titan sometimes requests
+  /// zero-input quotes.
   ///
   /// Titan only ever calls this with `SwapType::ExactIn`. Venues need not
   /// implement `ExactOut` (returning an error for it is acceptable) but must
@@ -262,8 +269,8 @@ pub trait TradingVenue {
   ///    never returns less output.
   ///
   /// 2. **Monotonic (non-increasing) price / concavity.** `p` is non-increasing
-  ///    in `amount`. Larger fills receive a weaker rate; the output
-  ///    curve is concave. In particular `price > 0` for any valid quote.
+  ///    in `amount`. Larger fills receive a weaker rate; the output curve is
+  ///    concave. In particular `price > 0` for any valid quote.
   ///
   /// 3. **Mean value theorem.** The reported price must bracket the realized
   ///    average rate over any interval. For `a < b`, the chord
@@ -301,7 +308,8 @@ pub trait TradingVenue {
   /// This is used by Titan when determining safe routing ranges or when
   /// generating fallback limits.
   ///
-  /// `tkn_in_ind` and `tkn_out_ind` refer to token indices in `get_token_info()`.
+  /// `tkn_in_ind` and `tkn_out_ind` refer to token indices in
+  /// `get_token_info()`.
   fn bounds(
     &self,
     tkn_in_ind: u8,

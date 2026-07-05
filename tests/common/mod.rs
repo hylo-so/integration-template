@@ -8,8 +8,8 @@
 //! Every function gates on prerequisites and SKIPs (returns) when they're
 //! missing, so `cargo test` is clean on a fresh clone:
 //! - all need a mainnet `SOLANA_RPC_URL`;
-//! - the simulation checks additionally need the venue's program binaries dumped
-//!   to `programs/<id>.so` (run `make dump-programs`).
+//! - the simulation checks additionally need the venue's program binaries
+//!   dumped to `programs/<id>.so` (run `make dump-programs`).
 
 #![allow(dead_code)] // each test binary exercises a subset of these helpers.
 
@@ -17,6 +17,7 @@ use std::env;
 use std::path::Path;
 use std::time::Instant;
 
+use assert_no_alloc::assert_no_alloc;
 use litesvm::LiteSVM;
 use solana_account::{Account, ReadableAccount, WritableAccount};
 use solana_client::nonblocking::rpc_client::RpcClient;
@@ -30,9 +31,6 @@ use solana_sysvar::clock::{self, Clock};
 use solana_transaction::Transaction;
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token::state::{Account as TokenAccount, AccountState};
-
-use assert_no_alloc::assert_no_alloc;
-
 use titan_integration_template::account_caching::AccountsCache;
 use titan_integration_template::account_caching::rpc_cache::RpcClientCache;
 use titan_integration_template::trading_venue::{
@@ -90,7 +88,8 @@ fn programs_ready(programs: &[Pubkey]) -> bool {
     let path = format!("programs/{id}.so");
     if !Path::new(&path).exists() {
       eprintln!(
-        "SKIP {}: missing {path} — run `make dump-programs` to fetch program binaries",
+        "SKIP {}: missing {path} — run `make dump-programs` to fetch program \
+         binaries",
         current_test()
       );
       return false;
@@ -201,7 +200,8 @@ async fn sync_clock(cache: &RpcClientCache, litesvm: &mut LiteSVM) {
 }
 
 /// Fetch the pool, build the venue, and bring it to a fully-updated state.
-/// Returns the venue plus the RPC cache it was loaded through (reused for sims).
+/// Returns the venue plus the RPC cache it was loaded through (reused for
+/// sims).
 async fn build_venue<V: SuiteVenue>(
   rpc_url: String,
   pool: Pubkey,
@@ -323,9 +323,9 @@ async fn sim_quote_request(
 // `#[tokio::test]` against their venue type.
 // ---------------------------------------------------------------------------
 
-/// Construction & boundaries: the venue builds, loads state, exposes valid token
-/// info, computes boundaries with a positive spot price, and quotes (with a
-/// positive price) at both edges — all without allocating in the quote path.
+/// Construction & boundaries: the venue builds, loads state, exposes valid
+/// token info, computes boundaries with a positive spot price, and quotes (with
+/// a positive price) at both edges — all without allocating in the quote path.
 pub async fn construction<V: SuiteVenue>(config: &SuiteConfig) {
   init_test_logger();
   let Some(rpc_url) = rpc_url_or_skip() else {
@@ -586,7 +586,8 @@ pub async fn price_monotone<V: SuiteVenue>(config: &SuiteConfig) {
       );
       assert!(
         price <= prev_price * (1.0 + REL_TOL),
-        "price not monotone non-increasing: {prev_price} -> {price} at {amount}"
+        "price not monotone non-increasing: {prev_price} -> {price} at \
+         {amount}"
       );
       prev_price = price;
     }
@@ -638,7 +639,8 @@ pub async fn mean_value_theorem<V: SuiteVenue>(config: &SuiteConfig) {
       );
       assert!(
         chord <= price_a * (1.0 + REL_TOL) + atol,
-        "chord {chord} exceeds left price {price_a} (atol {atol}) on [{a}, {b}]"
+        "chord {chord} exceeds left price {price_a} (atol {atol}) on [{a}, \
+         {b}]"
       );
       assert!(
         chord >= price_b * (1.0 - REL_TOL) - atol,

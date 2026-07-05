@@ -1,5 +1,6 @@
 //! Reference swap-route test: runs the shared route suite against the worked
-//! Raydium AMM example. SKIPs cleanly without SOLANA_RPC_URL / `make build-program`.
+//! Raydium AMM example. SKIPs cleanly without SOLANA_RPC_URL / `make
+//! build-program`.
 
 mod common;
 

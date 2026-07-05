@@ -1,9 +1,9 @@
 use num_traits::CheckedDiv;
 use uint::construct_uint;
 
+use super::error::AmmError;
+use super::state::AmmInfo;
 use crate::trading_venue::error::TradingVenueError;
-
-use super::{error::AmmError, state::AmmInfo};
 
 construct_uint! {
     pub struct U256(4);
@@ -51,8 +51,9 @@ impl Calculator {
         // (x + delta_x) * (y + delta_y) = x * y
         // (coin + amount_in) * (pc - amount_out) = coin * pc
         // => amount_out = pc - coin * pc / (coin + amount_in)
-        // => amount_out = ((pc * coin + pc * amount_in) - coin * pc) / (coin + amount_in)
-        // => amount_out =  pc * amount_in / (coin + amount_in)
+        // => amount_out = ((pc * coin + pc * amount_in) - coin * pc) / (coin +
+        // amount_in) => amount_out =  pc * amount_in / (coin +
+        // amount_in)
         let denominator =
           total_coin_without_take_pnl.checked_add(amount_in).unwrap();
         amount_out = total_pc_without_take_pnl
@@ -65,8 +66,9 @@ impl Calculator {
         // (x + delta_x) * (y + delta_y) = x * y
         // (pc + amount_in) * (coin - amount_out) = coin * pc
         // => amount_out = coin - coin * pc / (pc + amount_in)
-        // => amount_out = (coin * pc + coin * amount_in - coin * pc) / (pc + amount_in)
-        // => amount_out = coin * amount_in / (pc + amount_in)
+        // => amount_out = (coin * pc + coin * amount_in - coin * pc) / (pc +
+        // amount_in) => amount_out = coin * amount_in / (pc +
+        // amount_in)
         let denominator =
           total_pc_without_take_pnl.checked_add(amount_in).unwrap();
         amount_out = total_coin_without_take_pnl
@@ -91,8 +93,9 @@ impl Calculator {
         // (x + delta_x) * (y + delta_y) = x * y
         // (coin + amount_in) * (pc - amount_out) = coin * pc
         // => amount_in = coin * pc / (pc - amount_out) - coin
-        // => amount_in = (coin * pc - pc * coin + amount_out * coin) / (pc - amount_out)
-        // => amount_in = (amount_out * coin) / (pc - amount_out)
+        // => amount_in = (coin * pc - pc * coin + amount_out * coin) / (pc -
+        // amount_out) => amount_in = (amount_out * coin) / (pc -
+        // amount_out)
         let denominator =
           total_pc_without_take_pnl.checked_sub(amount_out).unwrap();
         amount_in = total_coin_without_take_pnl
@@ -106,12 +109,14 @@ impl Calculator {
         // (x + delta_x) * (y + delta_y) = x * y
         // (pc + amount_in) * (coin - amount_out) = coin * pc
         // => amount_out = coin - coin * pc / (pc + amount_in)
-        // => amount_out = (coin * pc + coin * amount_in - coin * pc) / (pc + amount_in)
-        // => amount_out = coin * amount_in / (pc + amount_in)
+        // => amount_out = (coin * pc + coin * amount_in - coin * pc) / (pc +
+        // amount_in) => amount_out = coin * amount_in / (pc +
+        // amount_in)
 
         // => amount_in = coin * pc / (coin - amount_out) - pc
-        // => amount_in = (coin * pc - pc * coin + pc * amount_out) / (coin - amount_out)
-        // => amount_in = (pc * amount_out) / (coin - amount_out)
+        // => amount_in = (coin * pc - pc * coin + pc * amount_out) / (coin -
+        // amount_out) => amount_in = (pc * amount_out) / (coin -
+        // amount_out)
         let denominator =
           total_coin_without_take_pnl.checked_sub(amount_out).unwrap();
         amount_in = total_pc_without_take_pnl
@@ -135,10 +140,10 @@ impl Calculator {
 /// calculation.
 ///
 /// For example, 400 / 32 = 12, with a remainder cutting off 0.5 of amount.
-/// If we simply ceiling the quotient to 13, then we're saying 400 / 32 = 13, which
-/// also cuts off value.  To improve this result, we calculate the other way
-/// around and again check for a remainder: 400 / 13 = 30, with a remainder of
-/// 0.77, and we ceiling that value again.  This gives us a final calculation
+/// If we simply ceiling the quotient to 13, then we're saying 400 / 32 = 13,
+/// which also cuts off value.  To improve this result, we calculate the other
+/// way around and again check for a remainder: 400 / 13 = 30, with a remainder
+/// of 0.77, and we ceiling that value again.  This gives us a final calculation
 /// of 400 / 31 = 13, which provides a ceiling calculation without cutting off
 /// more value than needed.
 ///

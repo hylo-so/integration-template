@@ -1,7 +1,8 @@
 //! State transition types
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use bytemuck::{Pod, Zeroable, from_bytes};
-use safe_transmute::{self, trivial::TriviallyTransmutable};
+use safe_transmute::trivial::TriviallyTransmutable;
+use safe_transmute::{self};
 use solana_program_pack::{IsInitialized, Pack, Sealed};
 use solana_pubkey::Pubkey;
 use solana_sysvar::__private::ProgramError;
@@ -35,7 +36,8 @@ pub enum AmmStatus {
   OrderBookOnly = 5u64,
   // pool only can add or remove liquidity and swap, can't plan orders
   SwapOnly = 6u64,
-  // pool status after created and will auto update to SwapOnly during swap after open_time
+  // pool status after created and will auto update to SwapOnly during swap
+  // after open_time
   WaitingTrade = 7u64,
 }
 impl AmmStatus {
@@ -217,9 +219,11 @@ pub struct AmmInfo {
   pub coin_lot_size: u64,
   /// pcLotSize 1 -> 0.000001
   pub pc_lot_size: u64,
-  /// min_cur_price: (2 * amm.order_num * amm.pc_lot_size) * max_price_multiplier
+  /// min_cur_price: (2 * amm.order_num * amm.pc_lot_size) *
+  /// max_price_multiplier
   pub min_price_multiplier: u64,
-  /// max_cur_price: (2 * amm.order_num * amm.pc_lot_size) * max_price_multiplier
+  /// max_cur_price: (2 * amm.order_num * amm.pc_lot_size) *
+  /// max_price_multiplier
   pub max_price_multiplier: u64,
   /// system decimal value, used to normalize the value of coin and pc amount
   pub sys_decimal_value: u64,

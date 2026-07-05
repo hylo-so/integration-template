@@ -3,17 +3,20 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(deprecated)]
 
+use std::mem::size_of;
+
 use solana_instruction::{AccountMeta, Instruction};
 use solana_pubkey::Pubkey;
 use solana_sysvar::__private::ProgramError;
-use std::mem::size_of;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct SwapInstructionBaseIn {
-  // SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
+  // SOURCE amount to transfer, output to DESTINATION is based on the exchange
+  // rate
   pub amount_in: u64,
-  /// Minimum amount of DESTINATION token to output, prevents excessive slippage
+  /// Minimum amount of DESTINATION token to output, prevents excessive
+  /// slippage
   pub minimum_amount_out: u64,
 }
 
@@ -21,11 +24,13 @@ pub struct SwapInstructionBaseIn {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum AmmInstruction {
-  /// Swap coin or pc from pool with orderbook disable, base amount_in with a slippage of minimum_amount_out
+  /// Swap coin or pc from pool with orderbook disable, base amount_in with a
+  /// slippage of minimum_amount_out
   ///
   ///   0. `[]` Spl Token program id
   ///   1. `[writable]` AMM Account
-  ///   2. `[]` $authority derived from `create_program_address(&[AUTHORITY_AMM, &[nonce]])`.
+  ///   2. `[]` $authority derived from `create_program_address(&[AUTHORITY_AMM,
+  ///      &[nonce]])`.
   ///   3. `[writable]` AMM coin vault Account to swap FROM or To.
   ///   4. `[writable]` AMM pc vault Account to swap FROM or To.
   ///   5. `[writable]` User source token Account.

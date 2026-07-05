@@ -1,5 +1,5 @@
-//! Off-chain helper for turning a quoter [`TradingVenue`] into route instruction
-//! inputs.
+//! Off-chain helper for turning a quoter [`TradingVenue`] into route
+//! instruction inputs.
 //!
 //! The template mirrors the route-leg shape needed by the program template so
 //! you can build and test a route leg for your venue in this repository.
@@ -31,9 +31,9 @@ use solana_instruction::{AccountMeta, Instruction};
 use solana_pubkey::Pubkey;
 
 use crate::hylo::{HyloOp, hylo_op};
-use crate::trading_venue::{
-  QuoteRequest, TradingVenue, error::TradingVenueError, protocol::PoolProtocol,
-};
+use crate::trading_venue::error::TradingVenueError;
+use crate::trading_venue::protocol::PoolProtocol;
+use crate::trading_venue::{QuoteRequest, TradingVenue};
 
 /// Single-byte instruction discriminator for `swap_route_v3`.
 pub const SWAP_ROUTE_V3_DISCRIMINATOR: u8 = 42;
@@ -79,7 +79,8 @@ pub struct SwapSpecInputV2 {
   pub from: u8,
   /// Index of the output mint.
   pub to: u8,
-  /// Fraction of the available input balance to spend, in nanos (`1e9` = 100%).
+  /// Fraction of the available input balance to spend, in nanos (`1e9` =
+  /// 100%).
   pub weight_nanos: u32,
   /// Number of accounts this leg consumes from the remaining-accounts region,
   /// **including** the trailing venue program id.
@@ -170,7 +171,8 @@ fn assemble_leg_accounts(
 }
 
 /// Encode the full `swap_route_v3` instruction data: the single-byte
-/// discriminator followed by the Borsh serialization of `(amount, mints, swaps)`.
+/// discriminator followed by the Borsh serialization of `(amount, mints,
+/// swaps)`.
 ///
 /// This is the wire format expected by the program template.
 pub fn encode_swap_route_v3_data(
@@ -193,10 +195,12 @@ pub fn encode_swap_route_v3_data(
 
 #[cfg(test)]
 mod tests {
+  use async_trait::async_trait;
+
   use super::*;
   use crate::account_caching::AccountsCache;
-  use crate::trading_venue::{QuoteResult, SwapType, token_info::TokenInfo};
-  use async_trait::async_trait;
+  use crate::trading_venue::token_info::TokenInfo;
+  use crate::trading_venue::{QuoteResult, SwapType};
 
   const VENUE_PID: Pubkey = Pubkey::new_from_array([7u8; 32]);
 

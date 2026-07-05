@@ -6,15 +6,15 @@
 //!
 //! The boundary search consists of two phases:
 //!
-//! 1. **Coarse exponential search** (`find_boundaries_coarse`)  
-//!    Finds rough intervals where quoting transitions from:
+//! 1. **Coarse exponential search** (`find_boundaries_coarse`)   Finds rough
+//!    intervals where quoting transitions from:
 //!       - INVALID → VALID  (lower boundary)
 //!       - VALID   → INVALID (upper boundary)
 //!
 //!    using exponential stepping with overflow protection.
 //!
-//! 2. **Binary refinement** (`refine_lower`, `refine_upper`)  
-//!    Narrows those rough intervals into precise boundaries.
+//! 2. **Binary refinement** (`refine_lower`, `refine_upper`)   Narrows those
+//!    rough intervals into precise boundaries.
 //!
 //! A quote is considered *valid* when:
 //! - The venue returns `Ok(QuoteResult)`
@@ -23,7 +23,8 @@
 //!
 //! This module is protocol-agnostic and works for any Titan-integrated AMM.
 
-use crate::trading_venue::{QuoteResult, error::TradingVenueError};
+use crate::trading_venue::QuoteResult;
+use crate::trading_venue::error::TradingVenueError;
 
 /// Each step in exponential search is scaled by this factor.
 const SCALING_FACTOR: u64 = 2;
@@ -48,10 +49,10 @@ fn valid_quote(quote: &QuoteResult) -> bool {
 ///
 /// Where:
 ///
-/// - `(lower_low → lower_high)` brackets the **first valid quote**  
-///   i.e., lower_low is invalid, lower_high is valid.
-/// - `(upper_low → upper_high)` brackets the **first invalid quote after the valid range**  
-///   i.e., upper_low is valid, upper_high is invalid.
+/// - `(lower_low → lower_high)` brackets the **first valid quote**   i.e.,
+///   lower_low is invalid, lower_high is valid.
+/// - `(upper_low → upper_high)` brackets the **first invalid quote after the
+///   valid range**   i.e., upper_low is valid, upper_high is invalid.
 ///
 /// The returned coarse bounds are later refined by binary search.
 ///
@@ -144,7 +145,8 @@ pub fn refine_lower(
     && valid_quote(result)
   {
     log::error!(
-      "The lower low quotes successfully; this contradicts the search invariant."
+      "The lower low quotes successfully; this contradicts the search \
+       invariant."
     );
   }
 
@@ -225,7 +227,8 @@ pub fn refine_upper(
     && high != u64::MAX
   {
     log::error!(
-      "The upper high is valid; this contradicts the expected invalid boundary."
+      "The upper high is valid; this contradicts the expected invalid \
+       boundary."
     );
   }
 
@@ -251,15 +254,15 @@ pub fn refine_upper(
 /// Unified boundary search.
 /// Returns `(lower_bound, upper_bound)` such that:
 ///
-/// - For all `x < lower_bound`, quoting is invalid  
-/// - For all `lower_bound ≤ x ≤ upper_bound`, quoting is valid  
+/// - For all `x < lower_bound`, quoting is invalid
+/// - For all `lower_bound ≤ x ≤ upper_bound`, quoting is valid
 /// - For all `x > upper_bound`, quoting is invalid
 ///
 /// The returned interval represents the **maximal valid input range** for the
 /// given pool and token pair.
 ///
 /// # Errors
-/// - `BoundarySearchFailed` if the search collapses to a degenerate interval  
+/// - `BoundarySearchFailed` if the search collapses to a degenerate interval
 /// - `NoQuotableValue` if no valid quote exists at any input (pool unusable)
 pub fn find_boundaries(
   f: &impl Fn(u64) -> Result<QuoteResult, TradingVenueError>,

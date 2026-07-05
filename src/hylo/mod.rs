@@ -8,27 +8,24 @@ use anyhow::{Result as AnyhowResult, ensure};
 use async_trait::async_trait;
 use borsh::{BorshDeserialize, BorshSerialize};
 use fix::prelude::UFix64;
-use hylo_idl::exchange;
 use hylo_idl::exchange::accounts::Hylo;
 use hylo_idl::exchange::client::args;
 use hylo_idl::exchange::instruction_builders;
-use hylo_idl::pda;
 use hylo_idl::tokens::{HYLOSOL, HYUSD, JITOSOL, TokenMint, XSOL};
+use hylo_idl::{exchange, pda};
 use hylo_quotes::protocol_state::{ProtocolAccounts, ProtocolState};
 use hylo_quotes::token_operation::TokenOperationExt;
 use solana_account::Account;
 use solana_instruction::Instruction;
 use solana_pubkey::Pubkey;
 
-use crate::{
-  account_caching::AccountsCache,
-  trading_venue::{
-    FromAccount, QuoteRequest, QuoteResult, SwapType, TradingVenue,
-    error::TradingVenueError,
-    protocol::PoolProtocol,
-    token_info::{TOKEN_PROGRAM_ID, TokenInfo},
-    venue_creation::{ParsedInstruction, PoolCreation},
-  },
+use crate::account_caching::AccountsCache;
+use crate::trading_venue::error::TradingVenueError;
+use crate::trading_venue::protocol::PoolProtocol;
+use crate::trading_venue::token_info::{TOKEN_PROGRAM_ID, TokenInfo};
+use crate::trading_venue::venue_creation::{ParsedInstruction, PoolCreation};
+use crate::trading_venue::{
+  FromAccount, QuoteRequest, QuoteResult, SwapType, TradingVenue,
 };
 
 /// Hylo V2 exchange program id. Resolves to the live "shadow" V2 deployment
