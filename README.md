@@ -1,3 +1,56 @@
+# Titan Integration — Hylo V2
+
+Hylo's V2 integration for Titan's routing layer, built on Titan's AMM
+integration template (all four layers wired; the Raydium reference is left
+intact as the baseline).
+
+## Hylo V2 venue
+
+Hylo is an LST-collateralized exchange, not a pool AMM: it mints/redeems the
+hyUSD stablecoin and the xSOL levercoin against LST collateral, converts
+between them, and swaps LST<->LST through its vaults. One venue
+(`src/hylo/mod.rs`, `HyloVenue`) covers all 12 directions over
+`[jitoSOL, hyloSOL, hyUSD, xSOL]`; the market account is Hylo's global state
+(`pda::HYLO`). Quote math calls the same `hylo-core` crate the on-chain
+program executes, with amount-independent state (NAVs, conversions, fee
+curves, rebalance mode) precomputed per `update_state`. LST payouts are
+capped by live vault balances.
+
+Layers:
+
+- Quote: `src/hylo/mod.rs` (`HyloVenue`, `HyloOp`, `parse_pool_creations` —
+  a "pool creation" is `register_lst`)
+- Route builder: `Venue::HyloExchange { op }` in `src/swap_route/mod.rs`
+- Program: `program-template/.../instructions/venues/hylo_exchange.rs`
+- Tests: `tests/hylo.rs`, `tests/hylo_creation.rs`,
+  `program-template/.../tests/hylo_route.rs`
+
+### Deployment: the `shadow` feature
+
+Hylo V2 currently runs as the mainnet **shadow** deployment
+(`hyshEX5sNEYhnYPMm8MwMThhBRPuLN3rjoYDbC9esPQ`); the canonical id
+(`HYEXCHtHkBagdStcJCp3xbbb9B7sdMdWXFNj6mdsG4hn`) still serves V1. The
+`shadow` cargo feature — **on by default** in both crates — points every
+program id and PDA at the live V2 deployment. When V2 is promoted to the
+canonical id, drop `shadow` from the `default` feature lists in `Cargo.toml`
+and `program-template/programs/titan-v3-venue-template/Cargo.toml` and update
+`HYLO_EXCHANGE` in the `Makefile`.
+
+### Known caveats (shadow, as of 2026-07)
+
+- The RPC-gated simulation tests require the shadow SOL/USD Pyth feed
+  (`7AviUf9n...`) to be fresh within `oracle_interval_secs` (currently 10s on
+  shadow) at snapshot time; when the shadow price crank lags, `update_state`
+  fails with `PythOracleOutdated` and the suite reads red. Retry, or bump the
+  shadow oracle interval.
+- Hylo's collateral-ratio fee curves are piecewise with non-uniform slopes,
+  so the output function has small locally-convex regions (~0.1%) on the
+  low-TVL shadow deployment. Titan's `price_monotone` / `mean_value_theorem`
+  tolerances can trip on these; see the notes in `src/hylo/mod.rs` around
+  `PRICE_PROBE_DELTA`.
+
+---
+
 # Titan AMM Integration Template
 
 A reference implementation and test suite for adding AMMs, CLMMs, and proprietary liquidity engines to Titan’s routing layer.
