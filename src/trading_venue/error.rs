@@ -16,7 +16,9 @@ use std::fmt::Display;
 use solana_pubkey::Pubkey;
 use thiserror::Error;
 
-use crate::{account_caching::AccountCacheError, trading_venue::protocol::PoolProtocol};
+use crate::{
+  account_caching::AccountCacheError, trading_venue::protocol::PoolProtocol,
+};
 
 /// Wrapper type for attaching additional context to an error.
 ///
@@ -30,43 +32,43 @@ use crate::{account_caching::AccountCacheError, trading_venue::protocol::PoolPro
 /// - `StaticStr` — lightweight static string reference
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorInfo {
-    Pubkey(Pubkey),
-    String(String),
-    StaticStr(&'static str),
+  Pubkey(Pubkey),
+  String(String),
+  StaticStr(&'static str),
 }
 
 impl From<Pubkey> for ErrorInfo {
-    fn from(pubkey: Pubkey) -> Self {
-        ErrorInfo::Pubkey(pubkey)
-    }
+  fn from(pubkey: Pubkey) -> Self {
+    ErrorInfo::Pubkey(pubkey)
+  }
 }
 
 impl From<&Pubkey> for ErrorInfo {
-    fn from(pubkey: &Pubkey) -> Self {
-        ErrorInfo::Pubkey(*pubkey)
-    }
+  fn from(pubkey: &Pubkey) -> Self {
+    ErrorInfo::Pubkey(*pubkey)
+  }
 }
 
 impl From<String> for ErrorInfo {
-    fn from(string: String) -> Self {
-        ErrorInfo::String(string)
-    }
+  fn from(string: String) -> Self {
+    ErrorInfo::String(string)
+  }
 }
 
 impl From<&'static str> for ErrorInfo {
-    fn from(string: &'static str) -> Self {
-        ErrorInfo::StaticStr(string)
-    }
+  fn from(string: &'static str) -> Self {
+    ErrorInfo::StaticStr(string)
+  }
 }
 
 impl Display for ErrorInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ErrorInfo::Pubkey(pubkey) => write!(f, "{}", pubkey),
-            ErrorInfo::String(string) => write!(f, "{}", string),
-            ErrorInfo::StaticStr(string) => write!(f, "{}", string),
-        }
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      ErrorInfo::Pubkey(pubkey) => write!(f, "{}", pubkey),
+      ErrorInfo::String(string) => write!(f, "{}", string),
+      ErrorInfo::StaticStr(string) => write!(f, "{}", string),
     }
+  }
 }
 
 /// Errors that may occur during Titan’s venue initialization, state update,
@@ -114,96 +116,96 @@ impl Display for ErrorInfo {
 #[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
 pub enum TradingVenueError {
-    /// No account exists in the RPC or cache for the given pubkey.
-    #[error("No account found for pubkey: {0}")]
-    NoAccountFound(ErrorInfo),
+  /// No account exists in the RPC or cache for the given pubkey.
+  #[error("No account found for pubkey: {0}")]
+  NoAccountFound(ErrorInfo),
 
-    /// Failed to construct a venue's internal state object from a Solana account.
-    #[error("Unable to build venue from account for pubkey: {0}")]
-    FromAccountError(ErrorInfo),
+  /// Failed to construct a venue's internal state object from a Solana account.
+  #[error("Unable to build venue from account for pubkey: {0}")]
+  FromAccountError(ErrorInfo),
 
-    /// Failed to concurrently fetch multiple accounts from RPC.
-    #[error("Failed to fetch multiple account data")]
-    FailedToFetchMultipleAccountData,
+  /// Failed to concurrently fetch multiple accounts from RPC.
+  #[error("Failed to fetch multiple account data")]
+  FailedToFetchMultipleAccountData,
 
-    /// Failed to fetch a single account from RPC.
-    #[error("Failed to fetch account data: {0}")]
-    FailedToFetchAccountData(ErrorInfo),
+  /// Failed to fetch a single account from RPC.
+  #[error("Failed to fetch account data: {0}")]
+  FailedToFetchAccountData(ErrorInfo),
 
-    /// Mint or pool account could not be deserialized into expected data structures.
-    #[error("Failed to deserialize account data: {0}")]
-    DeserializationFailed(ErrorInfo),
+  /// Mint or pool account could not be deserialized into expected data structures.
+  #[error("Failed to deserialize account data: {0}")]
+  DeserializationFailed(ErrorInfo),
 
-    /// Failed to obtain a lock on the account cache (unexpected threading issue).
-    #[error("Failed to unlock cache")]
-    CacheUnlockFailed,
+  /// Failed to obtain a lock on the account cache (unexpected threading issue).
+  #[error("Failed to unlock cache")]
+  CacheUnlockFailed,
 
-    /// The venue has not yet loaded its required accounts.
-    ///
-    /// This usually indicates that `update_state()` was not called before
-    /// attempting a quote or instruction build.
-    #[error("The venue has not had its accounts loaded")]
-    NotInitialized(ErrorInfo),
+  /// The venue has not yet loaded its required accounts.
+  ///
+  /// This usually indicates that `update_state()` was not called before
+  /// attempting a quote or instruction build.
+  #[error("The venue has not had its accounts loaded")]
+  NotInitialized(ErrorInfo),
 
-    /// A required field of the venue's state structure was not loaded or set.
-    #[error("The state object is not loaded: {0}")]
-    MissingState(ErrorInfo),
+  /// A required field of the venue's state structure was not loaded or set.
+  #[error("The state object is not loaded: {0}")]
+  MissingState(ErrorInfo),
 
-    /// Mint provided is invalid or mismatched for the venue.
-    #[error("Invalid mint: {0}")]
-    InvalidMint(ErrorInfo),
+  /// Mint provided is invalid or mismatched for the venue.
+  #[error("Invalid mint: {0}")]
+  InvalidMint(ErrorInfo),
 
-    /// Arithmetic performed via checked math failed (overflow, underflow, etc.).
-    #[error("Checked math error: {0}")]
-    CheckedMathError(ErrorInfo),
+  /// Arithmetic performed via checked math failed (overflow, underflow, etc.).
+  #[error("Checked math error: {0}")]
+  CheckedMathError(ErrorInfo),
 
-    /// Error returned from internal AMM logic.
-    #[error("Error from method: {0}")]
-    AmmMethodError(ErrorInfo),
+  /// Error returned from internal AMM logic.
+  #[error("Error from method: {0}")]
+  AmmMethodError(ErrorInfo),
 
-    /// Venues must currently support `ExactIn`; this error is returned if a caller
-    /// requests an unsupported `ExactOut` quote or swap.
-    #[error("Exact Out swap type is not supported")]
-    ExactOutNotSupported,
+  /// Venues must currently support `ExactIn`; this error is returned if a caller
+  /// requests an unsupported `ExactOut` quote or swap.
+  #[error("Exact Out swap type is not supported")]
+  ExactOutNotSupported,
 
-    /// Token amount / numeric conversion failure (e.g. atom scaling issues).
-    #[error("Data conversion error: {0}")]
-    DataConversionError(ErrorInfo),
+  /// Token amount / numeric conversion failure (e.g. atom scaling issues).
+  #[error("Data conversion error: {0}")]
+  DataConversionError(ErrorInfo),
 
-    /// Error during boundary search where the search interval collapses or an
-    /// invariant is violated.
-    #[error("Boundary search failed: {0}")]
-    BoundarySearchFailed(ErrorInfo),
+  /// Error during boundary search where the search interval collapses or an
+  /// invariant is violated.
+  #[error("Boundary search failed: {0}")]
+  BoundarySearchFailed(ErrorInfo),
 
-    /// Boundary search found no valid quoting value at any tested amount.
-    #[error("Boundary search failed: {0}")]
-    NoQuotableValue(ErrorInfo),
+  /// Boundary search found no valid quoting value at any tested amount.
+  #[error("Boundary search failed: {0}")]
+  NoQuotableValue(ErrorInfo),
 
-    /// Catch-all wrapper for unexpected boxed errors.
-    #[error("Something went wrong: {0}")]
-    SomethingWentWrong(Box<dyn std::error::Error>),
+  /// Catch-all wrapper for unexpected boxed errors.
+  #[error("Something went wrong: {0}")]
+  SomethingWentWrong(Box<dyn std::error::Error>),
 
-    /// The venue protocol or configuration is unsupported by Titan.
-    #[error("Unsupported venue: {0}")]
-    UnsupportedVenue(ErrorInfo),
+  /// The venue protocol or configuration is unsupported by Titan.
+  #[error("Unsupported venue: {0}")]
+  UnsupportedVenue(ErrorInfo),
 
-    /// A `TokenInfo` index was requested that does not exist in the venue's metadata.
-    #[error("Token info does not extend to index {0}")]
-    TokenInfoIndexError(usize),
+  /// A `TokenInfo` index was requested that does not exist in the venue's metadata.
+  #[error("Token info does not extend to index {0}")]
+  TokenInfoIndexError(usize),
 
-    /// Miscellaneous math error not captured by checked math.
-    #[error("Math Error: {0}")]
-    MathError(ErrorInfo),
+  /// Miscellaneous math error not captured by checked math.
+  #[error("Math Error: {0}")]
+  MathError(ErrorInfo),
 
-    /// Generic deserialization failure.
-    #[error("Deserialization Error: {0}")]
-    DeserializationError(ErrorInfo),
+  /// Generic deserialization failure.
+  #[error("Deserialization Error: {0}")]
+  DeserializationError(ErrorInfo),
 
-    /// A pool exists on-chain but is inactive or not usable for routing.
-    #[error("Pool {0} from protocol {1} is inactive")]
-    InactivePoolError(Pubkey, PoolProtocol),
+  /// A pool exists on-chain but is inactive or not usable for routing.
+  #[error("Pool {0} from protocol {1} is inactive")]
+  InactivePoolError(Pubkey, PoolProtocol),
 
-    /// Error produced by Titan’s account cache layer.
-    #[error("Account cache error: {0}")]
-    AccountCacheError(#[from] AccountCacheError),
+  /// Error produced by Titan’s account cache layer.
+  #[error("Account cache error: {0}")]
+  AccountCacheError(#[from] AccountCacheError),
 }

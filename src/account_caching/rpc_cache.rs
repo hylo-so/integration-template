@@ -39,123 +39,126 @@ type AccountCache = DashMap<Pubkey, Option<Account>>;
 /// - **Caching negative lookups**: Accounts that consistently return `None` are also stored.
 /// - **Thread-safe reads/writes** using `DashMap`.
 pub struct RpcClientCache {
-    rpc_client: RpcClient,
-    cache: AccountCache,
+  rpc_client: RpcClient,
+  cache: AccountCache,
 }
 
 impl RpcClientCache {
-    /// Construct a new RPC cache from an existing `RpcClient`.
-    pub fn new(rpc_client: RpcClient) -> Self {
-        let cache = AccountCache::default();
-        Self { rpc_client, cache }
-    }
+  /// Construct a new RPC cache from an existing `RpcClient`.
+  pub fn new(rpc_client: RpcClient) -> Self {
+    let cache = AccountCache::default();
+    Self { rpc_client, cache }
+  }
 
-    /// Clear all cached entries.
-    ///
-    /// Useful when a system update or transaction batch invalidates local state.
-    pub fn reset_cache(&mut self) {
-        self.cache.clear();
-    }
+  /// Clear all cached entries.
+  ///
+  /// Useful when a system update or transaction batch invalidates local state.
+  pub fn reset_cache(&mut self) {
+    self.cache.clear();
+  }
 
-    /// Retrieve multiple accounts from the cache without making RPC requests.
-    ///
-    /// For each pubkey:
-    /// - If present in the cache → returned immediately.
-    /// - If absent → `None` is returned.
-    ///
-    /// This does **not** fetch from RPC; it only reads cached values.
-    pub fn get_multiple(&self, pubkeys: &[Pubkey]) -> Vec<Option<Account>> {
-        let mut result = Vec::with_capacity(pubkeys.len());
-        pubkeys.iter().for_each(|key| {
-            if let Some(value) = self.cache.get(key) {
-                result.push(value.clone());
-            } else {
-                result.push(None);
-            }
-        });
+  /// Retrieve multiple accounts from the cache without making RPC requests.
+  ///
+  /// For each pubkey:
+  /// - If present in the cache → returned immediately.
+  /// - If absent → `None` is returned.
+  ///
+  /// This does **not** fetch from RPC; it only reads cached values.
+  pub fn get_multiple(&self, pubkeys: &[Pubkey]) -> Vec<Option<Account>> {
+    let mut result = Vec::with_capacity(pubkeys.len());
+    pubkeys.iter().for_each(|key| {
+      if let Some(value) = self.cache.get(key) {
+        result.push(value.clone());
+      } else {
+        result.push(None);
+      }
+    });
 
-        result
-    }
+    result
+  }
 }
 
 #[async_trait]
 impl AccountsCache for RpcClientCache {
-    /// Get a single account by pubkey.
-    ///
-    /// - Cache hit → returned immediately.
-    /// - Cache miss → RPC call made, then result cached.
-    ///
-    /// Errors are converted into `AccountCacheError`.
-    async fn get_account(&self, pubkey: &Pubkey) -> Result<Option<Account>, AccountCacheError> {
-        if let Some(account) = self.cache.get(pubkey) {
-            return Ok(account.to_owned());
-        }
-
-        let response: Account = self
-            .rpc_client
-            .get_account(pubkey)
-            .await
-            .map_err(AccountCacheError::FailedToFetchAccount)?;
-
-        // Cache positive lookup
-        self.cache.insert(*pubkey, Some(response.clone()));
-
-        Ok(Some(response))
+  /// Get a single account by pubkey.
+  ///
+  /// - Cache hit → returned immediately.
+  /// - Cache miss → RPC call made, then result cached.
+  ///
+  /// Errors are converted into `AccountCacheError`.
+  async fn get_account(
+    &self,
+    pubkey: &Pubkey,
+  ) -> Result<Option<Account>, AccountCacheError> {
+    if let Some(account) = self.cache.get(pubkey) {
+      return Ok(account.to_owned());
     }
 
-    /// Fetch multiple accounts, using cached values where possible and batching
-    /// missing keys into a single RPC call.
-    ///
-    /// Steps:
-    /// 1. Split pubkeys into cache hits and misses.
-    /// 2. Fetch misses using `get_multiple_accounts`.
-    /// 3. Store results (including `None` values) in cache.
-    /// 4. Return accounts in the same order as `pubkeys`.
-    async fn get_accounts(
-        &self,
-        pubkeys: &[Pubkey],
-    ) -> Result<Vec<Option<Account>>, AccountCacheError> {
-        let mut keys = Vec::new();
-        let mut result_map: AHashMap<Pubkey, Option<Account>> = AHashMap::default();
-        let cached_results = self.get_multiple(pubkeys);
+    let response: Account = self
+      .rpc_client
+      .get_account(pubkey)
+      .await
+      .map_err(AccountCacheError::FailedToFetchAccount)?;
 
-        // Identify cache hits and misses
-        cached_results
-            .iter()
-            .zip(pubkeys.iter())
-            .for_each(|(account, pubkey)| {
-                if let Some(res) = account {
-                    // Cached hit
-                    result_map.insert(*pubkey, Some(res.clone()));
-                } else {
-                    // Needs RPC fetch
-                    keys.push(*pubkey);
-                }
-            });
+    // Cache positive lookup
+    self.cache.insert(*pubkey, Some(response.clone()));
 
-        // Batch RPC call for missing keys
-        if !keys.is_empty() {
-            let response = self
-                .rpc_client
-                .get_multiple_accounts(&keys)
-                .await
-                .map_err(AccountCacheError::FailedToFetchAccount)?;
+    Ok(Some(response))
+  }
 
-            // Update map and cache
-            for (pubkey, account) in keys.iter().zip(response.iter()) {
-                result_map.insert(*pubkey, account.clone());
-                self.cache.insert(*pubkey, account.clone());
-            }
+  /// Fetch multiple accounts, using cached values where possible and batching
+  /// missing keys into a single RPC call.
+  ///
+  /// Steps:
+  /// 1. Split pubkeys into cache hits and misses.
+  /// 2. Fetch misses using `get_multiple_accounts`.
+  /// 3. Store results (including `None` values) in cache.
+  /// 4. Return accounts in the same order as `pubkeys`.
+  async fn get_accounts(
+    &self,
+    pubkeys: &[Pubkey],
+  ) -> Result<Vec<Option<Account>>, AccountCacheError> {
+    let mut keys = Vec::new();
+    let mut result_map: AHashMap<Pubkey, Option<Account>> = AHashMap::default();
+    let cached_results = self.get_multiple(pubkeys);
+
+    // Identify cache hits and misses
+    cached_results
+      .iter()
+      .zip(pubkeys.iter())
+      .for_each(|(account, pubkey)| {
+        if let Some(res) = account {
+          // Cached hit
+          result_map.insert(*pubkey, Some(res.clone()));
+        } else {
+          // Needs RPC fetch
+          keys.push(*pubkey);
         }
+      });
 
-        // Reassemble results in original input order
-        let mut result = Vec::new();
+    // Batch RPC call for missing keys
+    if !keys.is_empty() {
+      let response = self
+        .rpc_client
+        .get_multiple_accounts(&keys)
+        .await
+        .map_err(AccountCacheError::FailedToFetchAccount)?;
 
-        for pubkey in pubkeys {
-            let item = result_map.get(pubkey).unwrap();
-            result.push(item.clone());
-        }
-
-        Ok(result)
+      // Update map and cache
+      for (pubkey, account) in keys.iter().zip(response.iter()) {
+        result_map.insert(*pubkey, account.clone());
+        self.cache.insert(*pubkey, account.clone());
+      }
     }
+
+    // Reassemble results in original input order
+    let mut result = Vec::new();
+
+    for pubkey in pubkeys {
+      let item = result_map.get(pubkey).unwrap();
+      result.push(item.clone());
+    }
+
+    Ok(result)
+  }
 }

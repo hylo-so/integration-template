@@ -23,23 +23,23 @@ use crate::trading_venue::protocol::PoolProtocol;
 /// pools via CPI from a router or aggregator, not as a top-level instruction.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParsedInstruction {
-    /// Program the instruction invoked.
-    pub program_id: Pubkey,
-    /// The instruction's accounts, in order, resolved to absolute pubkeys.
-    pub accounts: Vec<Pubkey>,
-    /// Raw instruction data (the program's own encoding — discriminator + args).
-    pub data: Vec<u8>,
+  /// Program the instruction invoked.
+  pub program_id: Pubkey,
+  /// The instruction's accounts, in order, resolved to absolute pubkeys.
+  pub accounts: Vec<Pubkey>,
+  /// Raw instruction data (the program's own encoding — discriminator + args).
+  pub data: Vec<u8>,
 }
 
 /// A new pool discovered by parsing a creation transaction.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PoolCreation {
-    /// Which protocol created the pool.
-    pub protocol: PoolProtocol,
-    /// The new pool/market account address. Hand this to
-    /// [`FromAccount::from_account`](crate::trading_venue::FromAccount::from_account)
-    /// to build a venue, exactly as the suite does with a known pool.
-    pub pool: Pubkey,
-    /// The tradable token mints of the new pool.
-    pub mints: Vec<Pubkey>,
+  /// Which protocol created the pool.
+  pub protocol: PoolProtocol,
+  /// The new pool/market account address. Hand this to
+  /// [`FromAccount::from_account`](crate::trading_venue::FromAccount::from_account)
+  /// to build a venue, exactly as the suite does with a known pool.
+  pub pool: Pubkey,
+  /// The tradable token mints of the new pool.
+  pub mints: Vec<Pubkey>,
 }

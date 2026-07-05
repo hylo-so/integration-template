@@ -25,31 +25,34 @@ use solana_pubkey::Pubkey;
 /// - Simulators like LiteSVM or custom in-process banks
 #[async_trait]
 pub trait AccountsCache: Send + Sync {
-    /// Retrieve a single account by pubkey.
-    ///
-    /// Returns:
-    /// - `Ok(Some(Account))` if the account exists
-    /// - `Ok(None)` if the account is known to be missing
-    ///
-    /// Errors:
-    /// - RPC failures
-    /// - Lock acquisition failures
-    async fn get_account(&self, pubkey: &Pubkey) -> Result<Option<Account>, AccountCacheError>;
+  /// Retrieve a single account by pubkey.
+  ///
+  /// Returns:
+  /// - `Ok(Some(Account))` if the account exists
+  /// - `Ok(None)` if the account is known to be missing
+  ///
+  /// Errors:
+  /// - RPC failures
+  /// - Lock acquisition failures
+  async fn get_account(
+    &self,
+    pubkey: &Pubkey,
+  ) -> Result<Option<Account>, AccountCacheError>;
 
-    /// Retrieve multiple accounts in a single operation.
-    ///
-    /// The returned vector must have the same length and ordering as `pubkeys`.
-    ///
-    /// Returns:
-    /// - `Ok(vec![Some(acc1), None, Some(acc3), ...])`
-    ///
-    /// Errors:
-    /// - RPC or batching failures
-    /// - Any unexpected missing account (if implementation cannot detect)
-    async fn get_accounts(
-        &self,
-        pubkeys: &[Pubkey],
-    ) -> Result<Vec<Option<Account>>, AccountCacheError>;
+  /// Retrieve multiple accounts in a single operation.
+  ///
+  /// The returned vector must have the same length and ordering as `pubkeys`.
+  ///
+  /// Returns:
+  /// - `Ok(vec![Some(acc1), None, Some(acc3), ...])`
+  ///
+  /// Errors:
+  /// - RPC or batching failures
+  /// - Any unexpected missing account (if implementation cannot detect)
+  async fn get_accounts(
+    &self,
+    pubkeys: &[Pubkey],
+  ) -> Result<Vec<Option<Account>>, AccountCacheError>;
 }
 
 /// Errors that may occur when using `AccountsCache`.
@@ -65,23 +68,23 @@ pub trait AccountsCache: Send + Sync {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
 pub enum AccountCacheError {
-    /// RPC client failed to fetch account data.
-    ///
-    /// Automatically converted from `ClientError` through `#[from]`.
-    #[error("Failed to fetch account")]
-    FailedToFetchAccount(#[from] solana_client::client_error::ClientError),
+  /// RPC client failed to fetch account data.
+  ///
+  /// Automatically converted from `ClientError` through `#[from]`.
+  #[error("Failed to fetch account")]
+  FailedToFetchAccount(#[from] solana_client::client_error::ClientError),
 
-    /// Failure acquiring a write lock, if the cache uses lock-based concurrency.
-    #[error("Failed to acquire write lock")]
-    FailedToAcquireWriteLock,
+  /// Failure acquiring a write lock, if the cache uses lock-based concurrency.
+  #[error("Failed to acquire write lock")]
+  FailedToAcquireWriteLock,
 
-    /// Failure acquiring a read lock.
-    #[error("Failed to acquire read lock")]
-    FailedToAcquireReadLock,
+  /// Failure acquiring a read lock.
+  #[error("Failed to acquire read lock")]
+  FailedToAcquireReadLock,
 }
 
 /// Ensures `AccountCacheError` satisfies `Send + Sync` at compile time.
 const _: fn() = || {
-    fn assert_send_sync<T: Send + Sync>() {}
-    assert_send_sync::<AccountCacheError>();
+  fn assert_send_sync<T: Send + Sync>() {}
+  assert_send_sync::<AccountCacheError>();
 };
