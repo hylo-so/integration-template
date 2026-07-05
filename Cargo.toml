@@ -3,6 +3,15 @@ name = "titan-integration-template"
 version = "0.1.0"
 edition = "2024"
 
+# Hylo V2 currently runs as the "shadow" deployment on mainnet (program
+# `hyshEX5sNEYhnYPMm8MwMThhBRPuLN3rjoYDbC9esPQ`); the canonical id
+# (`HYEXCHtHkBagdStcJCp3xbbb9B7sdMdWXFNj6mdsG4hn`) still serves V1. The
+# `shadow` feature (on by default) points the venue at the live V2 programs;
+# drop it from `default` once V2 is promoted to the canonical id.
+[features]
+default = ["shadow"]
+shadow = ["hylo-core/shadow", "hylo-idl/shadow"]
+
 [dependencies]
 arrayref = "0.3.6"
 bytemuck = { version = "1.22", features = ["derive"] }
@@ -42,9 +51,16 @@ env_logger = "0.11.3"
 spl-token = { version = "7", features = ["no-entrypoint"] }
 spl-token-2022 = { version = "^9", features = ["no-entrypoint"]}
 spl-associated-token-account = "6"
-litesvm =  { version = "^0.6.1"}
+litesvm =  { version = "^0.7.1"}
 rand = "0.9.2"
 assert_no_alloc = { version = "1.1.2", default-features = false }
+anyhow = "1.0"
+anchor-lang = "0.32.1"
+anchor-spl = "0.32.1"
+hylo-fix = "0.6.1"
+pyth-solana-receiver-sdk = "=1.2.0"
+hylo-core = { git = "https://github.com/hylo-so/sdk", branch = "debt/oracle-interval-slot", features = ["offchain"] }
+hylo-idl = { git = "https://github.com/hylo-so/sdk", branch = "debt/oracle-interval-slot" }
 
 # Used only for the construction allocation check. Normal tests, including
 # `quoting_speed`, run under true `--release`.
@@ -52,3 +68,9 @@ assert_no_alloc = { version = "1.1.2", default-features = false }
 inherits = "release"
 debug-assertions = true
 overflow-checks = false
+
+# Cross-crate inlining matters for the fixed-point quote math hot path
+# (quoting_speed budget is 1µs).
+[profile.release]
+lto = "thin"
+codegen-units = 1

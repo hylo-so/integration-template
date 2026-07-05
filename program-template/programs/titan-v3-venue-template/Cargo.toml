@@ -19,7 +19,11 @@ no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
-default = []
+# Hylo V2 currently runs as the "shadow" deployment on mainnet; drop `shadow`
+# from `default` once V2 is promoted to the canonical program id. Must match
+# the off-chain crate's feature selection.
+default = ["shadow"]
+shadow = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 swap-logging = []
 
@@ -30,7 +34,7 @@ anchor-spl = "0.31.1"
 [dev-dependencies]
 borsh = "0.10.4"
 env_logger = "0.11.3"
-litesvm = "^0.6.1"
+litesvm = "^0.7.1"
 log = "0.4.28"
 solana-account = "2.2.1"
 solana-client = "2.2.1"

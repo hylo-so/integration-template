@@ -3,7 +3,7 @@
 #   make build-program   run anchor build for the route program
 #   make check-structure lib tests + scorecard assertion + enum parity
 #   make test-example   reference (Raydium) suite — must be green / skipped
-#   make test-venue      YOUR venue's suite (red until you implement YourVenue)
+#   make test-venue      Hylo venue suite
 #   make scorecard       print the integration scorecard only
 #   make dump-programs   fetch the on-chain program binaries the sim tests load
 #
@@ -22,7 +22,9 @@
 RAYDIUM := 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8
 SPL_CALC_1 := sspUE1vrh7xRoXxGsg7vR1zde2WdGtJRbyK9uRumBDy
 SPL_CALC_2 := ssmbu3KZxgonUtjEMCKspZzxvUQCxAFnyh1rcHUeEDo
-PROGRAMS := $(RAYDIUM) $(SPL_CALC_1) $(SPL_CALC_2)
+# Hylo V2 = the mainnet "shadow" deployment until promotion to the canonical id
+HYLO_EXCHANGE := hyshEX5sNEYhnYPMm8MwMThhBRPuLN3rjoYDbC9esPQ
+PROGRAMS := $(RAYDIUM) $(SPL_CALC_1) $(SPL_CALC_2) $(HYLO_EXCHANGE)
 
 DUMP_URL := $(if $(SOLANA_RPC_URL),$(SOLANA_RPC_URL),m)
 
@@ -82,16 +84,16 @@ _venue-phase:
 	@printf '  %-24s  %-8s  %s\n' 'Check' 'Status' 'Detail'
 	@printf '  %-24s  %-8s  %s\n' '------------------------' '--------' '----------------------------------------'
 	@log=target/log-venue-off.txt; \
-		cargo test --quiet $(RELEASE_PROFILE) --test your_venue -- --skip construction --nocapture >$$log 2>&1; rc1=$$?; \
-		cargo test --quiet $(ASSERT_PROFILE) --test your_venue -- construction --nocapture >>$$log 2>&1; rc2=$$?; \
-		cargo test --quiet $(RELEASE_PROFILE) --test your_venue_creation -- --nocapture >>$$log 2>&1; rc3=$$?; \
-		if [ $$rc1 -ne 0 ] || [ $$rc2 -ne 0 ] || [ $$rc3 -ne 0 ]; then st=red; dt='implement src/your_venue/mod.rs + tests/your_venue_creation.rs'; \
+		cargo test --quiet $(RELEASE_PROFILE) --test hylo -- --skip construction --nocapture >$$log 2>&1; rc1=$$?; \
+		cargo test --quiet $(ASSERT_PROFILE) --test hylo -- construction --nocapture >>$$log 2>&1; rc2=$$?; \
+		cargo test --quiet $(RELEASE_PROFILE) --test hylo_creation -- --nocapture >>$$log 2>&1; rc3=$$?; \
+		if [ $$rc1 -ne 0 ] || [ $$rc2 -ne 0 ] || [ $$rc3 -ne 0 ]; then st=red; dt='implement src/hylo/mod.rs + tests/hylo_creation.rs'; \
 		elif grep -q 'SKIP' $$log; then st=skipped; dt='set SOLANA_RPC_URL'; \
 		else st=ok; dt='venue suite passed'; fi; \
 		printf '  %-24s  %-8s  %s\n' 'Off-chain' "$$st" "$$dt"
 	@log=target/log-venue-prog.txt; \
-		cargo test --quiet $(PROGRAM) --release --test your_venue_route -- --nocapture >$$log 2>&1; rc=$$?; \
-		if [ $$rc -ne 0 ]; then st=red; dt='implement YourVenue + your program venue module'; \
+		cargo test --quiet $(PROGRAM) --release --test hylo_route -- --nocapture >$$log 2>&1; rc=$$?; \
+		if [ $$rc -ne 0 ]; then st=red; dt='implement HyloVenue + the program venue module'; \
 		elif grep -q 'SKIP' $$log; then st=skipped; dt='needs fresh anchor build + RPC + dumps'; \
 		else st=ok; dt='route suite passed'; fi; \
 		printf '  %-24s  %-8s  %s\n' 'On-chain program' "$$st" "$$dt"
