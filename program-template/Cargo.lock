@@ -302,6 +302,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor-client"
+version = "0.32.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a03f35d3cb6b26508da163e4f9bc7adc2a5445a1cf38bb1da6e6e3919c7d53d"
+dependencies = [
+ "anchor-lang 0.32.1",
+ "anyhow",
+ "futures",
+ "regex",
+ "serde",
+ "solana-account-decoder",
+ "solana-pubsub-client",
+ "solana-rpc-client",
+ "solana-rpc-client-api",
+ "solana-sdk",
+ "thiserror 1.0.69",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "anchor-derive-accounts"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1826,7 +1847,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2337,6 +2358,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "hylo-clients"
+version = "1.0.0"
+source = "git+https://github.com/hylo-so/sdk?branch=debt%2Foracle-interval-slot#b8cd902370ada41a411e6adf22b3b7f79496d17e"
+dependencies = [
+ "anchor-client",
+ "anchor-lang 0.32.1",
+ "anchor-spl 0.32.1",
+ "anyhow",
+ "async-trait",
+ "base64 0.22.1",
+ "bincode",
+ "hylo-core",
+ "hylo-fix",
+ "hylo-idl",
+ "itertools 0.14.0",
+ "mpl-token-metadata",
+ "pyth-solana-receiver-sdk",
+ "serde_json",
+ "solana-address-lookup-table-interface",
+ "solana-rpc-client",
+ "solana-rpc-client-api",
+ "solana-transaction-status-client-types",
+ "squads-multisig",
+ "tokio",
+]
+
+[[package]]
 name = "hylo-core"
 version = "1.0.0"
 source = "git+https://github.com/hylo-so/sdk?branch=debt%2Foracle-interval-slot#b8cd902370ada41a411e6adf22b3b7f79496d17e"
@@ -2395,6 +2443,27 @@ dependencies = [
  "serde_json",
  "solana-account-decoder",
  "solana-sdk",
+]
+
+[[package]]
+name = "hylo-quotes"
+version = "1.0.0"
+source = "git+https://github.com/hylo-so/sdk?branch=debt%2Foracle-interval-slot#b8cd902370ada41a411e6adf22b3b7f79496d17e"
+dependencies = [
+ "anchor-client",
+ "anchor-lang 0.32.1",
+ "anchor-spl 0.32.1",
+ "anyhow",
+ "async-trait",
+ "bincode",
+ "hylo-clients",
+ "hylo-core",
+ "hylo-fix",
+ "hylo-idl",
+ "pyth-solana-receiver-sdk",
+ "serde",
+ "solana-rpc-client",
+ "tokio",
 ]
 
 [[package]]
@@ -3075,24 +3144,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8536030f9fea7127f841b45bb6243b27255787fb4eb83958aa1ef9d2fdc0c36"
 dependencies = [
  "num-bigint 0.2.6",
- "num-complex 0.2.4",
+ "num-complex",
  "num-integer",
  "num-iter",
- "num-rational 0.2.4",
- "num-traits",
-]
-
-[[package]]
-name = "num"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35bd024e8b2ff75562e5f34e7f4905839deb4b22955ef5e73d2fea1b9813cb23"
-dependencies = [
- "num-bigint 0.4.8",
- "num-complex 0.4.6",
- "num-integer",
- "num-iter",
- "num-rational 0.4.2",
+ "num-rational",
  "num-traits",
 ]
 
@@ -3124,15 +3179,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6b19411a9719e753aff12e5187b74d60d3dc449ec3f4dc21e3989c3f554bc95"
 dependencies = [
  "autocfg",
- "num-traits",
-]
-
-[[package]]
-name = "num-complex"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
-dependencies = [
  "num-traits",
 ]
 
@@ -3197,17 +3243,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-rational"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824"
-dependencies = [
- "num-bigint 0.4.8",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3263,7 +3298,7 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "680998035259dcfcafe653688bf2aa6d3e2dc05e98be6ab46afb089dc84f1df8"
 dependencies = [
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate 3.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.118",
@@ -3420,7 +3455,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fd23b938276f14057220b707937bcb42fa76dda7560e57a2da30cb52d557937"
 dependencies = [
- "num 0.2.1",
+ "num",
 ]
 
 [[package]]
@@ -3561,7 +3596,7 @@ version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "498d20fd330277697aaee92f341bdabdb4695b10e05f054157a18ad8b7746a17"
 dependencies = [
- "anchor-lang 0.31.1",
+ "anchor-lang 0.32.1",
  "bincode",
  "borsh 0.10.4",
  "bytemuck",
@@ -3666,7 +3701,7 @@ dependencies = [
  "once_cell",
  "socket2 0.6.4",
  "tracing",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4144,7 +4179,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4495,7 +4530,7 @@ version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58267dd2fbaa6dceecba9e3e106d2d90a2b02497c0e8b01b8759beccf5113938"
 dependencies = [
- "num 0.4.3",
+ "num",
 ]
 
 [[package]]
@@ -7778,6 +7813,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "squads-multisig"
+version = "2.1.0"
+source = "git+https://github.com/hylo-so/v4?branch=main#a0324f524d9afd011ccfeea9293f0eddfc360be3"
+dependencies = [
+ "futures",
+ "solana-message",
+ "solana-rpc-client",
+ "solana-rpc-client-api",
+ "squads-multisig-program",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "squads-multisig-program"
+version = "2.1.0"
+source = "git+https://github.com/hylo-so/v4?branch=main#a0324f524d9afd011ccfeea9293f0eddfc360be3"
+dependencies = [
+ "anchor-lang 0.32.1",
+ "anchor-spl 0.32.1",
+ "solana-address-lookup-table-interface",
+ "solana-borsh",
+ "solana-program",
+ "solana-security-txt",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7985,6 +8046,7 @@ dependencies = [
  "hylo-core",
  "hylo-fix",
  "hylo-idl",
+ "hylo-quotes",
  "litesvm",
  "log",
  "num-traits",
@@ -8627,7 +8689,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

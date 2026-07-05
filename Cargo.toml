@@ -10,7 +10,7 @@ edition = "2024"
 # drop it from `default` once V2 is promoted to the canonical id.
 [features]
 default = ["shadow"]
-shadow = ["hylo-core/shadow", "hylo-idl/shadow"]
+shadow = ["hylo-core/shadow", "hylo-idl/shadow", "hylo-quotes/shadow"]
 
 [dependencies]
 arrayref = "0.3.6"
@@ -61,6 +61,7 @@ hylo-fix = "0.6.1"
 pyth-solana-receiver-sdk = "=1.2.0"
 hylo-core = { git = "https://github.com/hylo-so/sdk", branch = "debt/oracle-interval-slot", features = ["offchain"] }
 hylo-idl = { git = "https://github.com/hylo-so/sdk", branch = "debt/oracle-interval-slot" }
+hylo-quotes = { git = "https://github.com/hylo-so/sdk", branch = "debt/oracle-interval-slot" }
 
 # Used only for the construction allocation check. Normal tests, including
 # `quoting_speed`, run under true `--release`.

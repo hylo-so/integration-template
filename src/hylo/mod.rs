@@ -10,31 +10,27 @@
 //!
 //! The venue's `pool_id` is Hylo's global state account (`pda::HYLO`); its
 //! tradable tokens are `[jitoSOL, hyloSOL, hyUSD, xSOL]`, and every ordered
-//! pair of those four is a supported direction. Quote math runs on
-//! `hylo-core` — the same crate the on-chain program executes — so the
-//! off-chain quote matches on-chain execution exactly.
+//! pair of those four is a supported direction. Everything protocol-specific
+//! comes from the Hylo SDK: account list and state assembly from
+//! `hylo_quotes::protocol_state`, quote math from the `TokenOperation` impls
+//! on [`ProtocolState`] (the same `hylo-core` code the on-chain program
+//! executes), and instructions from `hylo_idl::exchange::instruction_builders`.
+//! The only venue-local logic is the mint-pair dispatch, the vault-balance
+//! payout caps, and the marginal-price secant.
 
 use ahash::HashSet;
 use anchor_lang::AccountDeserialize;
 use anchor_lang::prelude::Clock;
-use anchor_spl::token::{Mint, TokenAccount};
+use anchor_spl::token::TokenAccount;
 use async_trait::async_trait;
 use borsh::{BorshDeserialize, BorshSerialize};
-use fix::prelude::{N9, UFix64};
-use hylo_core::asset_swap_config::AssetSwapConfig;
-use hylo_core::conversion::{Conversion, SwapConversion};
-use hylo_core::exchange_context::{ExchangeContext, LstExchangeContext};
-use hylo_core::fees::controller::FeeExtract;
-use hylo_core::lst::sol_price::LstSolPrice;
-use hylo_core::lst::total_sol_cache::TotalSolCache;
-use hylo_core::pyth::OracleConfig;
-use hylo_core::rebalance::mode::RebalanceMode;
-use hylo_idl::exchange::accounts::{Hylo, LstHeader};
+use fix::prelude::UFix64;
 use hylo_idl::exchange::client::args;
 use hylo_idl::exchange::instruction_builders;
 use hylo_idl::pda;
 use hylo_idl::tokens::{HYLOSOL, HYUSD, JITOSOL, TokenMint, XSOL};
-use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
+use hylo_quotes::protocol_state::{ProtocolAccounts, ProtocolState};
+use hylo_quotes::token_operation::TokenOperationExt;
 use solana_account::Account;
 use solana_instruction::Instruction;
 use solana_pubkey::Pubkey;
@@ -148,196 +144,108 @@ pub fn parse_pool_creations(instructions: &[ParsedInstruction]) -> Vec<PoolCreat
         .collect()
 }
 
-/// Every account needed to rebuild quoting state, in fetch order:
-/// `[hylo, hyUSD mint, xSOL mint, jito header, hylo header, SOL/USD feed,
-/// jitoSOL mint, hyloSOL mint, clock, jito vault, hylo vault]`.
-fn update_keys() -> [Pubkey; 11] {
+/// Accounts fetched on top of [`ProtocolAccounts::pubkeys`]: the LST mints
+/// (token metadata) and the LST collateral vaults (payout caps).
+fn extra_keys() -> [Pubkey; 4] {
     [
-        pda::HYLO,
-        HYUSD::MINT,
-        XSOL::MINT,
-        pda::lst_header(JITOSOL::MINT),
-        pda::lst_header(HYLOSOL::MINT),
-        pda::SOL_USD_PYTH_FEED,
         JITOSOL::MINT,
         HYLOSOL::MINT,
-        CLOCK_SYSVAR_ID,
         pda::lst_vault(JITOSOL::MINT),
         pda::lst_vault(HYLOSOL::MINT),
     ]
 }
 
-/// `SysvarC1ock11111111111111111111111111111111`
-const CLOCK_SYSVAR_ID: Pubkey =
-    Pubkey::from_str_const("SysvarC1ock11111111111111111111111111111111");
-
-/// Per-LST quoting inputs, precomputed in `update_state`.
-struct LstParams {
-    /// LST/SOL exchange rate from the LST header.
-    price: LstSolPrice,
-    /// LST/USD conversion built from the SOL/USD oracle + LST/SOL price.
-    conversion: Conversion,
-    /// Live balance of the protocol's LST collateral vault; every operation
-    /// paying out this LST (redeems, LST->LST) is capped by it.
-    vault_balance: u64,
+/// Every account needed to rebuild quoting state, in fetch order: the SDK's
+/// protocol account list followed by [`extra_keys`].
+fn update_keys() -> Vec<Pubkey> {
+    let mut keys = ProtocolAccounts::pubkeys();
+    keys.extend(extra_keys());
+    keys
 }
 
-/// Everything the quote math needs, assembled once per `update_state` from
-/// live accounts. Amount-independent values (NAVs, conversions, rebalance
-/// mode) are precomputed here so `quote()` only runs the amount-dependent
-/// fee and conversion arithmetic — the same `hylo-core` calls the on-chain
-/// handlers make, in the same order.
+/// SDK protocol state plus the venue-local payout caps.
 struct HyloQuoteState {
-    exchange_context: LstExchangeContext<Clock>,
-    jitosol: LstParams,
-    hylosol: LstParams,
-    lst_swap_config: AssetSwapConfig,
-    stablecoin_nav: UFix64<N9>,
-    /// `Err` at build time (e.g. zero supply) surfaces per-quote.
-    levercoin_mint_nav: Option<UFix64<N9>>,
-    levercoin_redeem_nav: Option<UFix64<N9>>,
-    swap_conversion: Option<SwapConversion>,
-    rebalance_mode: RebalanceMode,
-    stablecoin_mint_enabled: bool,
-    levercoin_mint_enabled: bool,
-    epoch: u64,
+    state: ProtocolState<Clock>,
+    jitosol_vault_balance: u64,
+    hylosol_vault_balance: u64,
 }
 
 impl HyloQuoteState {
-    fn lst_params(&self, mint: &Pubkey) -> anyhow::Result<&LstParams> {
-        if *mint == JITOSOL::MINT {
-            Ok(&self.jitosol)
-        } else if *mint == HYLOSOL::MINT {
-            Ok(&self.hylosol)
+    fn vault_balance(&self, lst_mint: &Pubkey) -> u64 {
+        if *lst_mint == JITOSOL::MINT {
+            self.jitosol_vault_balance
         } else {
-            Err(anyhow::anyhow!("no LST params for mint {mint}"))
+            self.hylosol_vault_balance
         }
+    }
+
+    /// Cap an LST payout by the collateral vault's live balance: the on-chain
+    /// transfer would fail beyond it, so a larger quote is a liquidity miss.
+    fn cap_to_vault(&self, lst_out: u64, lst_mint: &Pubkey) -> anyhow::Result<u64> {
+        anyhow::ensure!(
+            lst_out <= self.vault_balance(lst_mint),
+            "LST payout exceeds vault balance"
+        );
+        Ok(lst_out)
     }
 }
 
-/// Cap an LST payout by the collateral vault's live balance: the on-chain
-/// transfer would fail beyond it, so a larger quote is a liquidity miss.
-fn cap_to_vault(lst_out: u64, params: &LstParams) -> anyhow::Result<u64> {
-    anyhow::ensure!(
-        lst_out <= params.vault_balance,
-        "LST payout exceeds vault balance"
-    );
-    Ok(lst_out)
-}
-
-/// Compute the raw-atom output for `amount` atoms of `input_mint`.
-///
-/// Each arm mirrors the corresponding on-chain instruction handler: the same
-/// `hylo-core` fee, NAV, and conversion calls in the same order, so integer
-/// rounding matches execution exactly.
+/// Compute the raw-atom output for `amount` atoms of `input_mint` by
+/// dispatching the runtime mint pair onto the SDK's statically typed
+/// [`hylo_quotes::token_operation::TokenOperation`] impls.
 fn hylo_out(
-    state: &HyloQuoteState,
+    quote_state: &HyloQuoteState,
     op: HyloOp,
     input_mint: &Pubkey,
     output_mint: &Pubkey,
     amount: u64,
 ) -> anyhow::Result<u64> {
-    let context = &state.exchange_context;
+    let state = &quote_state.state;
+    let from_jito = *input_mint == JITOSOL::MINT;
+    let to_jito = *output_mint == JITOSOL::MINT;
     let output = match op {
-        HyloOp::MintStablecoin => {
-            anyhow::ensure!(
-                state.stablecoin_mint_enabled,
-                "LST stablecoin mint disabled"
-            );
-            let params = state.lst_params(input_mint)?;
-            let FeeExtract {
-                amount_remaining, ..
-            } = context.stablecoin_mint_fee(&params.price, UFix64::new(amount))?;
-            let converted = params
-                .conversion
-                .lst_to_token(amount_remaining, state.stablecoin_nav)?;
-            context.validate_stablecoin_amount(converted)?.bits
+        HyloOp::MintStablecoin if from_jito => {
+            state.output::<JITOSOL, HYUSD>(UFix64::new(amount))?.out_amount.bits
         }
-        HyloOp::RedeemStablecoin => {
-            let params = state.lst_params(output_mint)?;
-            let lst_out = params
-                .conversion
-                .token_to_lst(UFix64::new(amount), state.stablecoin_nav)?;
-            cap_to_vault(lst_out.bits, params)?;
-            context
-                .stablecoin_redeem_fee(&params.price, lst_out)?
-                .amount_remaining
-                .bits
+        HyloOp::MintStablecoin => {
+            state.output::<HYLOSOL, HYUSD>(UFix64::new(amount))?.out_amount.bits
+        }
+        HyloOp::RedeemStablecoin if to_jito => quote_state.cap_to_vault(
+            state.output::<HYUSD, JITOSOL>(UFix64::new(amount))?.out_amount.bits,
+            output_mint,
+        )?,
+        HyloOp::RedeemStablecoin => quote_state.cap_to_vault(
+            state.output::<HYUSD, HYLOSOL>(UFix64::new(amount))?.out_amount.bits,
+            output_mint,
+        )?,
+        HyloOp::MintLevercoin if from_jito => {
+            state.output::<JITOSOL, XSOL>(UFix64::new(amount))?.out_amount.bits
         }
         HyloOp::MintLevercoin => {
-            anyhow::ensure!(
-                state.levercoin_mint_enabled,
-                "Levercoin mint disabled in current rebalance mode"
-            );
-            let params = state.lst_params(input_mint)?;
-            let FeeExtract {
-                amount_remaining, ..
-            } = context.levercoin_mint_fee(&params.price, UFix64::new(amount))?;
-            let nav = state
-                .levercoin_mint_nav
-                .ok_or_else(|| anyhow::anyhow!("levercoin mint NAV unavailable"))?;
-            params.conversion.lst_to_token(amount_remaining, nav)?.bits
+            state.output::<HYLOSOL, XSOL>(UFix64::new(amount))?.out_amount.bits
         }
-        HyloOp::RedeemLevercoin => {
-            anyhow::ensure!(
-                state.rebalance_mode != RebalanceMode::Depeg,
-                "Levercoin redemption disabled in current rebalance mode"
-            );
-            let params = state.lst_params(output_mint)?;
-            let nav = state
-                .levercoin_redeem_nav
-                .ok_or_else(|| anyhow::anyhow!("levercoin redeem NAV unavailable"))?;
-            let lst_out = params.conversion.token_to_lst(UFix64::new(amount), nav)?;
-            cap_to_vault(lst_out.bits, params)?;
-            context
-                .levercoin_redeem_fee(&params.price, lst_out)?
-                .amount_remaining
-                .bits
-        }
+        HyloOp::RedeemLevercoin if to_jito => quote_state.cap_to_vault(
+            state.output::<XSOL, JITOSOL>(UFix64::new(amount))?.out_amount.bits,
+            output_mint,
+        )?,
+        HyloOp::RedeemLevercoin => quote_state.cap_to_vault(
+            state.output::<XSOL, HYLOSOL>(UFix64::new(amount))?.out_amount.bits,
+            output_mint,
+        )?,
         HyloOp::ConvertStableToLever => {
-            anyhow::ensure!(
-                state.rebalance_mode != RebalanceMode::Depeg,
-                "Swaps are disabled in current rebalance mode"
-            );
-            let conversion = state
-                .swap_conversion
-                .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("swap conversion unavailable"))?;
-            let FeeExtract {
-                amount_remaining, ..
-            } = context.stablecoin_to_levercoin_fee(UFix64::new(amount))?;
-            conversion.stable_to_lever(amount_remaining)?.bits
+            state.output::<HYUSD, XSOL>(UFix64::new(amount))?.out_amount.bits
         }
         HyloOp::ConvertLeverToStable => {
-            anyhow::ensure!(
-                state.rebalance_mode >= RebalanceMode::SellZone1,
-                "Swaps are disabled in current rebalance mode"
-            );
-            let conversion = state
-                .swap_conversion
-                .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("swap conversion unavailable"))?;
-            let converted = conversion.lever_to_stable(UFix64::new(amount))?;
-            let hyusd_total = context.validate_stablecoin_swap_amount(converted)?;
-            context
-                .levercoin_to_stablecoin_fee(hyusd_total)?
-                .amount_remaining
-                .bits
+            state.output::<XSOL, HYUSD>(UFix64::new(amount))?.out_amount.bits
         }
-        HyloOp::SwapLstToLst => {
-            let FeeExtract {
-                amount_remaining, ..
-            } = state.lst_swap_config.apply_fee(UFix64::new(amount))?;
-            let in_params = state.lst_params(input_mint)?;
-            let out_params = state.lst_params(output_mint)?;
-            let out_amount = in_params.price.convert_lst_amount(
-                state.epoch,
-                amount_remaining,
-                &out_params.price,
-            )?;
-            cap_to_vault(out_amount.bits, out_params)?;
-            out_amount.bits
-        }
+        HyloOp::SwapLstToLst if from_jito => quote_state.cap_to_vault(
+            state.output::<JITOSOL, HYLOSOL>(UFix64::new(amount))?.out_amount.bits,
+            output_mint,
+        )?,
+        HyloOp::SwapLstToLst => quote_state.cap_to_vault(
+            state.output::<HYLOSOL, JITOSOL>(UFix64::new(amount))?.out_amount.bits,
+            output_mint,
+        )?,
     };
     Ok(output)
 }
@@ -353,7 +261,7 @@ pub struct HyloVenue {
     required_state_pubkeys: HashSet<Pubkey>,
     /// Set to `true` once all required state has been loaded.
     initialized: bool,
-    /// Quote state snapshot; shares the on-chain math via `hylo-core`.
+    /// Quote state snapshot; shares the on-chain math via the Hylo SDK.
     state: Option<HyloQuoteState>,
 }
 
@@ -363,6 +271,7 @@ fn boxed_err<E: Into<Box<dyn std::error::Error>>>(err: E) -> TradingVenueError {
 
 impl FromAccount for HyloVenue {
     fn from_account(pubkey: &Pubkey, account: &Account) -> Result<Self, TradingVenueError> {
+        use hylo_idl::exchange::accounts::Hylo;
         // Defensive parse: reject anything that is not the Hylo state account.
         let is_hylo_state =
             *pubkey == pda::HYLO && Hylo::try_deserialize(&mut account.data.as_slice()).is_ok();
@@ -414,98 +323,42 @@ impl TradingVenue for HyloVenue {
         let keys = update_keys();
         let accounts = cache.get_accounts(&keys).await?;
 
+        // SDK accounts -> full protocol state (deserialization, oracle
+        // validation, exchange contexts) exactly as the SDK's own
+        // `RpcStateProvider::fetch_state` does.
+        let sdk_count = ProtocolAccounts::expected_count();
+        let protocol_accounts =
+            ProtocolAccounts::try_from((&keys[..sdk_count], &accounts[..sdk_count]))
+                .map_err(boxed_err)?;
+        let state = ProtocolState::try_from(&protocol_accounts).map_err(boxed_err)?;
+
         let get = |index: usize| -> Result<&Account, TradingVenueError> {
             accounts[index]
                 .as_ref()
                 .ok_or(TradingVenueError::NoAccountFound(keys[index].into()))
         };
-        fn parse<A: AccountDeserialize>(
-            account: &Account,
-            key: &Pubkey,
-        ) -> Result<A, TradingVenueError> {
-            A::try_deserialize(&mut account.data.as_slice())
+        let jitosol_mint_account = get(sdk_count)?;
+        let hylosol_mint_account = get(sdk_count + 1)?;
+        let parse_vault = |account: &Account, key: &Pubkey| -> Result<u64, TradingVenueError> {
+            TokenAccount::try_deserialize(&mut account.data.as_slice())
+                .map(|vault| vault.amount)
                 .map_err(|_| TradingVenueError::DeserializationFailed((*key).into()))
-        }
-
-        let hylo: Hylo = parse(get(0)?, &keys[0])?;
-        let xsol_mint: Mint = parse(get(2)?, &keys[2])?;
-        let jitosol_header: LstHeader = parse(get(3)?, &keys[3])?;
-        let hylosol_header: LstHeader = parse(get(4)?, &keys[4])?;
-        let sol_usd: PriceUpdateV2 = parse(get(5)?, &keys[5])?;
-        let clock: Clock = bincode::deserialize(&get(8)?.data)
-            .map_err(|_| TradingVenueError::DeserializationFailed(keys[8].into()))?;
-        let jitosol_vault: TokenAccount = parse(get(9)?, &keys[9])?;
-        let hylosol_vault: TokenAccount = parse(get(10)?, &keys[10])?;
-
-        let epoch = clock.epoch;
-        let total_sol_cache: TotalSolCache = hylo.total_sol_cache.into();
-        let oracle_config = OracleConfig::new(
-            hylo.oracle_interval_secs,
-            hylo.oracle_conf_tolerance.try_into().map_err(boxed_err)?,
-        );
-        let exchange_context = LstExchangeContext::load(
-            clock,
-            &total_sol_cache,
-            hylo.stablecoin_mint_threshold
-                .try_into()
-                .map_err(boxed_err)?,
-            oracle_config,
-            hylo.levercoin_fees.into(),
-            &sol_usd,
-            hylo.virtual_stablecoin.into(),
-            Some(&xsol_mint),
-            hylo.lst_sell_curve_config.into(),
-            hylo.lst_buy_curve_config.into(),
-        )
-        .map_err(boxed_err)?;
-        let lst_swap_config = AssetSwapConfig::new(hylo.lst_swap_fee.into()).map_err(boxed_err)?;
-
-        // Precompute every amount-independent quantity once per refresh.
-        let jitosol_price: LstSolPrice = jitosol_header.price_sol.into();
-        let hylosol_price: LstSolPrice = hylosol_header.price_sol.into();
-        let jitosol = LstParams {
-            price: jitosol_price,
-            conversion: exchange_context
-                .token_conversion(&jitosol_price)
-                .map_err(boxed_err)?,
-            vault_balance: jitosol_vault.amount,
         };
-        let hylosol = LstParams {
-            price: hylosol_price,
-            conversion: exchange_context
-                .token_conversion(&hylosol_price)
-                .map_err(boxed_err)?,
-            vault_balance: hylosol_vault.amount,
-        };
-        let stablecoin_nav = exchange_context.stablecoin_nav().map_err(boxed_err)?;
-        let levercoin_mint_nav = exchange_context.levercoin_mint_nav().ok();
-        let levercoin_redeem_nav = exchange_context.levercoin_redeem_nav().ok();
-        let swap_conversion = exchange_context.swap_conversion().ok();
-        let rebalance_mode = exchange_context.rebalance_mode();
-        let stablecoin_mint_enabled = exchange_context.stablecoin_mint_enabled();
-        let levercoin_mint_enabled = exchange_context.levercoin_mint_enabled();
+        let jitosol_vault_balance = parse_vault(get(sdk_count + 2)?, &keys[sdk_count + 2])?;
+        let hylosol_vault_balance = parse_vault(get(sdk_count + 3)?, &keys[sdk_count + 3])?;
 
         // Token metadata: [jitoSOL, hyloSOL, hyUSD, xSOL]. All are classic SPL
         // Token mints; the epoch only matters for Token-2022 transfer fees.
         self.token_info = vec![
-            TokenInfo::new(&JITOSOL::MINT, get(6)?, u64::MAX)?,
-            TokenInfo::new(&HYLOSOL::MINT, get(7)?, u64::MAX)?,
-            TokenInfo::new(&HYUSD::MINT, get(1)?, u64::MAX)?,
-            TokenInfo::new(&XSOL::MINT, get(2)?, u64::MAX)?,
+            TokenInfo::new(&JITOSOL::MINT, jitosol_mint_account, u64::MAX)?,
+            TokenInfo::new(&HYLOSOL::MINT, hylosol_mint_account, u64::MAX)?,
+            TokenInfo::new(&HYUSD::MINT, &protocol_accounts.hyusd_mint, u64::MAX)?,
+            TokenInfo::new(&XSOL::MINT, &protocol_accounts.xsol_mint, u64::MAX)?,
         ];
         self.state = Some(HyloQuoteState {
-            exchange_context,
-            jitosol,
-            hylosol,
-            lst_swap_config,
-            stablecoin_nav,
-            levercoin_mint_nav,
-            levercoin_redeem_nav,
-            swap_conversion,
-            rebalance_mode,
-            stablecoin_mint_enabled,
-            levercoin_mint_enabled,
-            epoch,
+            state,
+            jitosol_vault_balance,
+            hylosol_vault_balance,
         });
         self.initialized = true;
         Ok(())
