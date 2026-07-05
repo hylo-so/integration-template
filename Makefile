@@ -22,7 +22,6 @@
 RAYDIUM := 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8
 SPL_CALC_1 := sspUE1vrh7xRoXxGsg7vR1zde2WdGtJRbyK9uRumBDy
 SPL_CALC_2 := ssmbu3KZxgonUtjEMCKspZzxvUQCxAFnyh1rcHUeEDo
-# Hylo V2 = the mainnet "shadow" deployment until promotion to the canonical id
 HYLO_EXCHANGE := hyshEX5sNEYhnYPMm8MwMThhBRPuLN3rjoYDbC9esPQ
 PROGRAMS := $(RAYDIUM) $(SPL_CALC_1) $(SPL_CALC_2) $(HYLO_EXCHANGE)
 

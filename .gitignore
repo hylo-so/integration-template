@@ -77,6 +77,5 @@ Desktop.ini
 # Local tooling
 .cache/
 
-# Cargo lockfiles are committed (git deps need precise duplicate-major pins)
 !Cargo.lock
 !program-template/Cargo.lock

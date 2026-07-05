@@ -3,11 +3,6 @@ name = "titan-integration-template"
 version = "0.1.0"
 edition = "2024"
 
-# Hylo V2 currently runs as the "shadow" deployment on mainnet (program
-# `hyshEX5sNEYhnYPMm8MwMThhBRPuLN3rjoYDbC9esPQ`); the canonical id
-# (`HYEXCHtHkBagdStcJCp3xbbb9B7sdMdWXFNj6mdsG4hn`) still serves V1. The
-# `shadow` feature (on by default) points the venue at the live V2 programs;
-# drop it from `default` once V2 is promoted to the canonical id.
 [features]
 default = ["shadow"]
 shadow = ["hylo-core/shadow", "hylo-idl/shadow", "hylo-quotes/shadow"]
@@ -70,8 +65,6 @@ inherits = "release"
 debug-assertions = true
 overflow-checks = false
 
-# Cross-crate inlining matters for the fixed-point quote math hot path
-# (quoting_speed budget is 1µs).
 [profile.release]
 lto = "thin"
 codegen-units = 1
