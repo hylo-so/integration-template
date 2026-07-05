@@ -1,31 +1,55 @@
 //! Guards that the route-builder `Venue` enum (in the off-chain crate's
 //! `swap_route` module) and the program `Venue` enum (this crate's `state.rs`)
-//! serialize to identical bytes.
-//!
-//! When you add your venue variant, add it to both enums in the same position
-//! and to the `cases` list below.
+//! serialize to identical bytes, across every `HyloOp`.
 
 use anchor_lang::AnchorSerialize;
 use titan_integration_template::swap_route::Venue as RouteBuilderVenue;
+use titan_integration_template::hylo::HyloOp as RouteBuilderHyloOp;
+use titan_v3_venue_template::state::HyloOp as ProgramHyloOp;
 use titan_v3_venue_template::state::Venue as ProgramVenue;
 
 #[test]
 fn venue_enum_matches_route_builder() {
-    let cases = [
-        (ProgramVenue::RaydiumAmm, RouteBuilderVenue::RaydiumAmm),
+    let ops = [
         (
-            ProgramVenue::TemplateVenue {
-                zero_for_one: false,
-            },
-            RouteBuilderVenue::TemplateVenue {
-                zero_for_one: false,
-            },
+            ProgramHyloOp::MintStablecoin,
+            RouteBuilderHyloOp::MintStablecoin,
         ),
         (
-            ProgramVenue::TemplateVenue { zero_for_one: true },
-            RouteBuilderVenue::TemplateVenue { zero_for_one: true },
+            ProgramHyloOp::RedeemStablecoin,
+            RouteBuilderHyloOp::RedeemStablecoin,
+        ),
+        (
+            ProgramHyloOp::MintLevercoin,
+            RouteBuilderHyloOp::MintLevercoin,
+        ),
+        (
+            ProgramHyloOp::RedeemLevercoin,
+            RouteBuilderHyloOp::RedeemLevercoin,
+        ),
+        (
+            ProgramHyloOp::ConvertStableToLever,
+            RouteBuilderHyloOp::ConvertStableToLever,
+        ),
+        (
+            ProgramHyloOp::ConvertLeverToStable,
+            RouteBuilderHyloOp::ConvertLeverToStable,
+        ),
+        (
+            ProgramHyloOp::SwapLstToLst,
+            RouteBuilderHyloOp::SwapLstToLst,
         ),
     ];
+
+    let mut cases = vec![(ProgramVenue::RaydiumAmm, RouteBuilderVenue::RaydiumAmm)];
+    cases.extend(ops.map(|(program_op, route_builder_op)| {
+        (
+            ProgramVenue::HyloExchange { op: program_op },
+            RouteBuilderVenue::HyloExchange {
+                op: route_builder_op,
+            },
+        )
+    }));
 
     for (program, route_builder) in cases {
         let program_bytes = program.try_to_vec().unwrap();

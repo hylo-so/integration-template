@@ -3,12 +3,26 @@ use anchor_lang::prelude::*;
 pub const MAX_SWAPS: usize = 12;
 pub const MAX_MINTS: usize = 12;
 
+/// Hylo exchange operation for a route leg. Must stay byte-for-byte identical
+/// to `HyloOp` in the off-chain route builder (`src/your_venue/mod.rs`).
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy, Eq, Debug)]
+pub enum HyloOp {
+    MintStablecoin,
+    RedeemStablecoin,
+    MintLevercoin,
+    RedeemLevercoin,
+    ConvertStableToLever,
+    ConvertLeverToStable,
+    SwapLstToLst,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy, Eq, Debug)]
 pub enum Venue {
     RaydiumAmm,
-    // FILL_IN: add your venue variant here. Include any CPI parameters the
-    // router must pass to your venue adapter, such as direction flags.
-    TemplateVenue { zero_for_one: bool },
+    /// Hylo V2 exchange; `op` selects the exchange instruction to CPI.
+    HyloExchange {
+        op: HyloOp,
+    },
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy, Eq, Debug)]
