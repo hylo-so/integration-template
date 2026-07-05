@@ -1,7 +1,3 @@
-//! Guards that the route-builder `Venue` enum (in the off-chain crate's
-//! `swap_route` module) and the program `Venue` enum (this crate's `state.rs`)
-//! serialize to identical bytes, across every `HyloOp`.
-
 use anchor_lang::AnchorSerialize;
 use titan_integration_template::swap_route::Venue as RouteBuilderVenue;
 use titan_integration_template::hylo::HyloOp as RouteBuilderHyloOp;

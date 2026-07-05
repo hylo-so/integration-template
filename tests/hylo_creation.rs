@@ -1,10 +1,3 @@
-//! Hylo's venue-creation parsing test.
-//!
-//! Hylo's global market exists once, so "pool creation" for this venue is
-//! `register_lst`: the instruction that registers a new LST as collateral and
-//! thereby creates new tradable pairs. The fixture mirrors the real
-//! `register_lst` account order from the exchange IDL — no RPC, no network.
-
 use hylo_idl::pda;
 use hylo_idl::tokens::{HYLOSOL, HYUSD, JITOSOL, StakePool, TokenMint, XSOL};
 use solana_pubkey::Pubkey;

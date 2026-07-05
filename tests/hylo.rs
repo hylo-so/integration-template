@@ -1,9 +1,3 @@
-//! Hylo's test suite — the same shared assertions the example passes, run
-//! against `HyloVenue`.
-//!
-//! Like the example suite, the tests SKIP when `SOLANA_RPC_URL` (and, for the
-//! simulations, dumped program binaries) are absent.
-
 mod common;
 
 use common::SuiteConfig;

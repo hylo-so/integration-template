@@ -1,30 +1,15 @@
-//! Hylo V2 exchange venue.
-//!
-//! Hylo is not a pool-based AMM: it is an LST-collateralized exchange that
-//! mints and redeems the hyUSD stablecoin and the xSOL levercoin against LST
-//! collateral (jitoSOL, hyloSOL), converts between hyUSD and xSOL, and swaps
-//! LST<->LST through its collateral vaults. All operations are priced off the
-//! protocol's global state (NAVs derived from the SOL/USD Pyth feed, LST/SOL
-//! stake-pool rates, and collateral-ratio-dependent fee curves) rather than
-//! per-pool reserves.
-//!
-//! The venue's `pool_id` is Hylo's global state account (`pda::HYLO`); its
-//! tradable tokens are `[jitoSOL, hyloSOL, hyUSD, xSOL]`, and every ordered
-//! pair of those four is a supported direction. Everything protocol-specific
-//! comes from the Hylo SDK: account list and state assembly from
-//! `hylo_quotes::protocol_state`, quote math from the `TokenOperation` impls
-//! on [`ProtocolState`] (the same `hylo-core` code the on-chain program
-//! executes), and instructions from `hylo_idl::exchange::instruction_builders`.
-//! The only venue-local logic is the mint-pair dispatch, the vault-balance
-//! payout caps, and the marginal-price secant.
+use std::error::Error;
 
 use ahash::HashSet;
 use anchor_lang::AccountDeserialize;
 use anchor_lang::prelude::Clock;
 use anchor_spl::token::TokenAccount;
+use anyhow::{Result as AnyhowResult, ensure};
 use async_trait::async_trait;
 use borsh::{BorshDeserialize, BorshSerialize};
 use fix::prelude::UFix64;
+use hylo_idl::exchange;
+use hylo_idl::exchange::accounts::Hylo;
 use hylo_idl::exchange::client::args;
 use hylo_idl::exchange::instruction_builders;
 use hylo_idl::pda;
@@ -48,7 +33,7 @@ use crate::{
 
 /// Hylo V2 exchange program id. Resolves to the live "shadow" V2 deployment
 /// with the default `shadow` feature, or to the canonical id without it.
-pub const HYLO_EXCHANGE_PROGRAM_ID: Pubkey = hylo_idl::exchange::ID_CONST;
+pub const HYLO_EXCHANGE_PROGRAM_ID: Pubkey = exchange::ID_CONST;
 
 /// Hylo's global state account — this venue's pool/market id.
 pub const HYLO_STATE_ID: Pubkey = pda::HYLO;
@@ -181,8 +166,8 @@ impl HyloQuoteState {
 
     /// Cap an LST payout by the collateral vault's live balance: the on-chain
     /// transfer would fail beyond it, so a larger quote is a liquidity miss.
-    fn cap_to_vault(&self, lst_out: u64, lst_mint: &Pubkey) -> anyhow::Result<u64> {
-        anyhow::ensure!(
+    fn cap_to_vault(&self, lst_out: u64, lst_mint: &Pubkey) -> AnyhowResult<u64> {
+        ensure!(
             lst_out <= self.vault_balance(lst_mint),
             "LST payout exceeds vault balance"
         );
@@ -199,51 +184,87 @@ fn hylo_out(
     input_mint: &Pubkey,
     output_mint: &Pubkey,
     amount: u64,
-) -> anyhow::Result<u64> {
+) -> AnyhowResult<u64> {
     let state = &quote_state.state;
     let from_jito = *input_mint == JITOSOL::MINT;
     let to_jito = *output_mint == JITOSOL::MINT;
     let output = match op {
         HyloOp::MintStablecoin if from_jito => {
-            state.output::<JITOSOL, HYUSD>(UFix64::new(amount))?.out_amount.bits
+            state
+                .output::<JITOSOL, HYUSD>(UFix64::new(amount))?
+                .out_amount
+                .bits
         }
         HyloOp::MintStablecoin => {
-            state.output::<HYLOSOL, HYUSD>(UFix64::new(amount))?.out_amount.bits
+            state
+                .output::<HYLOSOL, HYUSD>(UFix64::new(amount))?
+                .out_amount
+                .bits
         }
         HyloOp::RedeemStablecoin if to_jito => quote_state.cap_to_vault(
-            state.output::<HYUSD, JITOSOL>(UFix64::new(amount))?.out_amount.bits,
+            state
+                .output::<HYUSD, JITOSOL>(UFix64::new(amount))?
+                .out_amount
+                .bits,
             output_mint,
         )?,
         HyloOp::RedeemStablecoin => quote_state.cap_to_vault(
-            state.output::<HYUSD, HYLOSOL>(UFix64::new(amount))?.out_amount.bits,
+            state
+                .output::<HYUSD, HYLOSOL>(UFix64::new(amount))?
+                .out_amount
+                .bits,
             output_mint,
         )?,
         HyloOp::MintLevercoin if from_jito => {
-            state.output::<JITOSOL, XSOL>(UFix64::new(amount))?.out_amount.bits
+            state
+                .output::<JITOSOL, XSOL>(UFix64::new(amount))?
+                .out_amount
+                .bits
         }
         HyloOp::MintLevercoin => {
-            state.output::<HYLOSOL, XSOL>(UFix64::new(amount))?.out_amount.bits
+            state
+                .output::<HYLOSOL, XSOL>(UFix64::new(amount))?
+                .out_amount
+                .bits
         }
         HyloOp::RedeemLevercoin if to_jito => quote_state.cap_to_vault(
-            state.output::<XSOL, JITOSOL>(UFix64::new(amount))?.out_amount.bits,
+            state
+                .output::<XSOL, JITOSOL>(UFix64::new(amount))?
+                .out_amount
+                .bits,
             output_mint,
         )?,
         HyloOp::RedeemLevercoin => quote_state.cap_to_vault(
-            state.output::<XSOL, HYLOSOL>(UFix64::new(amount))?.out_amount.bits,
+            state
+                .output::<XSOL, HYLOSOL>(UFix64::new(amount))?
+                .out_amount
+                .bits,
             output_mint,
         )?,
         HyloOp::ConvertStableToLever => {
-            state.output::<HYUSD, XSOL>(UFix64::new(amount))?.out_amount.bits
+            state
+                .output::<HYUSD, XSOL>(UFix64::new(amount))?
+                .out_amount
+                .bits
         }
         HyloOp::ConvertLeverToStable => {
-            state.output::<XSOL, HYUSD>(UFix64::new(amount))?.out_amount.bits
+            state
+                .output::<XSOL, HYUSD>(UFix64::new(amount))?
+                .out_amount
+                .bits
         }
         HyloOp::SwapLstToLst if from_jito => quote_state.cap_to_vault(
-            state.output::<JITOSOL, HYLOSOL>(UFix64::new(amount))?.out_amount.bits,
+            state
+                .output::<JITOSOL, HYLOSOL>(UFix64::new(amount))?
+                .out_amount
+                .bits,
             output_mint,
         )?,
         HyloOp::SwapLstToLst => quote_state.cap_to_vault(
-            state.output::<HYLOSOL, JITOSOL>(UFix64::new(amount))?.out_amount.bits,
+            state
+                .output::<HYLOSOL, JITOSOL>(UFix64::new(amount))?
+                .out_amount
+                .bits,
             output_mint,
         )?,
     };
@@ -265,13 +286,12 @@ pub struct HyloVenue {
     state: Option<HyloQuoteState>,
 }
 
-fn boxed_err<E: Into<Box<dyn std::error::Error>>>(err: E) -> TradingVenueError {
+fn boxed_err<E: Into<Box<dyn Error>>>(err: E) -> TradingVenueError {
     TradingVenueError::SomethingWentWrong(err.into())
 }
 
 impl FromAccount for HyloVenue {
     fn from_account(pubkey: &Pubkey, account: &Account) -> Result<Self, TradingVenueError> {
-        use hylo_idl::exchange::accounts::Hylo;
         // Defensive parse: reject anything that is not the Hylo state account.
         let is_hylo_state =
             *pubkey == pda::HYLO && Hylo::try_deserialize(&mut account.data.as_slice()).is_ok();

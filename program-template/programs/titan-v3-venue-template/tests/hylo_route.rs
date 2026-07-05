@@ -1,7 +1,3 @@
-//! Hylo's swap-route test — the same end-to-end suite the example passes, run
-//! against `HyloVenue`. Needs SOLANA_RPC_URL and the route program built;
-//! SKIPs cleanly until then.
-
 mod common;
 
 use common::{run_swap_route, RouteConfig};

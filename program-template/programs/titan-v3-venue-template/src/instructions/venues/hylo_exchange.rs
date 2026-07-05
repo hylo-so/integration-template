@@ -1,12 +1,3 @@
-//! Hylo V2 exchange venue CPI adapter.
-//!
-//! Every leg is one exchange instruction (mint/redeem/convert/swap). The
-//! account list is produced by the off-chain route builder from Hylo's
-//! Anchor account contexts and passed through unchanged; the TitanPDA is the
-//! `user` and signs via the router's PDA seeds. Instruction data is the
-//! 8-byte Anchor discriminator, the exact-in amount, and a `None`
-//! `slippage_config` (route-level output checks handle slippage).
-
 use anchor_lang::{prelude::*, solana_program::instruction::Instruction};
 
 use crate::state::HyloOp;
