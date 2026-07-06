@@ -20,13 +20,14 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = ["shadow"]
-shadow = []
+shadow = ["hylo-idl/shadow"]
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 swap-logging = []
 
 [dependencies]
-anchor-lang = "0.31.1"
-anchor-spl = "0.31.1"
+anchor-lang = "0.32.1"
+anchor-spl = "0.32.1"
+hylo-idl = { git = "https://github.com/hylo-so/sdk", branch = "debt/heap-allocations" }
 
 [dev-dependencies]
 borsh = "0.10.4"

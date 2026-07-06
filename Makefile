@@ -45,7 +45,7 @@ _unit-phase:
 	@printf '  %-24s  %-8s  %s\n' '------------------------' '--------' '----------------------------------------'
 	@log=target/log-unit.txt; \
 		if cargo test --quiet $(RELEASE_PROFILE) --lib --test scorecard >$$log 2>&1 \
-			&& cargo test --quiet $(PROGRAM) --release --lib --test venue_parity >>$$log 2>&1; \
+			&& CARGO_PROFILE_RELEASE_LTO=off cargo test --quiet $(PROGRAM) --release --lib --test venue_parity >>$$log 2>&1; \
 		then st=ok; dt='lib tests + scorecard + enum parity'; \
 		else st=FAILED; dt='see log below'; fi; \
 		printf '  %-24s  %-8s  %s\n' 'Unit + structure' "$$st" "$$dt"; \
@@ -68,7 +68,7 @@ _example-sim-phase:
 		printf '  %-24s  %-8s  %s\n' 'Off-chain' "$$st" "$$dt"; \
 		if [ $$st = FAILED ]; then echo; cat $$log; exit 1; fi
 	@log=target/log-ex-prog.txt; \
-		cargo test --quiet $(PROGRAM) --release --test example_route -- --nocapture >$$log 2>&1; rc=$$?; \
+		CARGO_PROFILE_RELEASE_LTO=off cargo test --quiet $(PROGRAM) --release --test example_route -- --nocapture >$$log 2>&1; rc=$$?; \
 		if [ $$rc -ne 0 ]; then st=FAILED; dt='see log below'; \
 		elif grep -q 'SKIP' $$log; then st=skipped; dt='needs fresh anchor build + RPC + dumps'; \
 		else st=ok; dt='route suite passed'; fi; \
@@ -92,7 +92,7 @@ _venue-phase:
 		else st=ok; dt='venue suite passed'; fi; \
 		printf '  %-24s  %-8s  %s\n' 'Off-chain' "$$st" "$$dt"
 	@log=target/log-venue-prog.txt; \
-		cargo test --quiet $(PROGRAM) --release --test hylo_route -- --nocapture >$$log 2>&1; rc=$$?; \
+		CARGO_PROFILE_RELEASE_LTO=off cargo test --quiet $(PROGRAM) --release --test hylo_route -- --nocapture >$$log 2>&1; rc=$$?; \
 		if [ $$rc -ne 0 ]; then st=red; dt='implement HyloVenue + the program venue module'; \
 		elif grep -q 'SKIP' $$log; then st=skipped; dt='needs fresh anchor build + RPC + dumps'; \
 		else st=ok; dt='route suite passed'; fi; \

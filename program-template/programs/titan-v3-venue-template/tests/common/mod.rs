@@ -212,9 +212,8 @@ fn initialize_titan_pda(
   payer: &Keypair,
   titan_pda: Pubkey,
 ) {
-  let data = anchor_lang::solana_program::hash::hash(b"global:initialize")
-    .to_bytes()[..8]
-    .to_vec();
+  let data =
+    solana_program::hash::hash(b"global:initialize").to_bytes()[..8].to_vec();
   let ix = Instruction {
     program_id: titan_v3_venue_template::ID,
     accounts: vec![
