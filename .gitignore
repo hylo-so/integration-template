@@ -80,3 +80,4 @@ Desktop.ini
 !Cargo.lock
 !program-template/Cargo.lock
 !flake.lock
+.direnv/
