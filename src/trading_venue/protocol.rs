@@ -15,16 +15,12 @@ use std::fmt::Display;
 ///
 /// Protocols included here:
 /// - `HyloExchange`: Hylo's V2 exchange (LST-collateralized hyUSD/xSOL).
-/// - `RaydiumAMM`: Raydium’s constant-product AMM on Solana.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PoolProtocol {
   /// Hylo's V2 exchange program: mint/redeem of the hyUSD stablecoin and
   /// xSOL levercoin against LST collateral (jitoSOL, hyloSOL), plus
   /// stable<->lever converts and LST<->LST swaps.
   HyloExchange,
-
-  /// Raydium’s AMM (x*y=k) pools on Solana.
-  RaydiumAMM,
 }
 
 impl Display for PoolProtocol {
@@ -44,7 +40,6 @@ impl From<PoolProtocol> for String {
   fn from(protocol: PoolProtocol) -> Self {
     match protocol {
       PoolProtocol::HyloExchange => "HyloExchange".to_string(),
-      PoolProtocol::RaydiumAMM => "RaydiumAMM".to_string(),
     }
   }
 }

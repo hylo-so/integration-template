@@ -1,10 +1,8 @@
 //! Shared, venue-generic swap-route suite for the on-chain template.
 //!
-//! Both `tests/example_route.rs` (the Raydium reference) and
-//! `tests/your_venue_route.rs` (your integration) call [`run_swap_route`], so
-//! the example and your venue are exercised by the same end-to-end test:
-//! quote off-chain, execute `swap_route_v3` in LiteSVM, and
-//! assert the simulated output matches the quote.
+//! `tests/hylo_route.rs` calls [`run_swap_route`]: quote off-chain, execute
+//! `swap_route_v3` in LiteSVM, and assert the simulated output matches the
+//! quote.
 //!
 //! It runtime-SKIPs (prints a reason and returns) when prerequisites are
 //! missing, so `cargo test` stays clean on a fresh clone. It needs:

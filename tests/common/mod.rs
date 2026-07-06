@@ -1,9 +1,6 @@
 //! Shared, venue-generic test suite.
 //!
-//! Both `tests/example.rs` (the Raydium reference) and `tests/your_venue.rs`
-//! (your integration) run *these* functions against their venue type, so the
-//! example and your venue are held to exactly the same bar and the two suites
-//! cannot drift.
+//! `tests/hylo.rs` runs these functions against `HyloVenue`.
 //!
 //! Every function gates on prerequisites and SKIPs (returns) when they're
 //! missing, so `cargo test` is clean on a fresh clone:

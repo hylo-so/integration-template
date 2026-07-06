@@ -8,7 +8,7 @@ use anchor_spl::token_2022::{
 use anchor_spl::token_interface::{transfer_checked, TransferChecked};
 
 use crate::error::TemplateError;
-use crate::instructions::venues::{hylo_router, raydium_amm};
+use crate::instructions::venues::hylo_router;
 use crate::state::{SwapSpecInputV2, TitanPda, Venue, MAX_MINTS, MAX_SWAPS};
 
 #[derive(Accounts)]
@@ -347,7 +347,6 @@ fn perform_cpi_swap<'info>(
   signer_seeds: &[&[&[u8]]],
 ) -> Result<()> {
   let instructions = match swap.venue {
-    Venue::RaydiumAmm => raydium_amm::swap_base_in_v2(amount, account_metas)?,
     Venue::Hylo { token_a, token_b } => {
       hylo_router::swap(token_a, token_b, amount, account_metas)?
     }

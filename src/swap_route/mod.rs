@@ -50,12 +50,8 @@ pub const ROUTE_WEIGHT_ALL: u32 = 1_000_000_000;
   BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Eq, Debug,
 )]
 pub enum Venue {
-  RaydiumAmm,
   /// Hylo V2, via Hylo's on-chain router.
-  Hylo {
-    token_a: Pubkey,
-    token_b: Pubkey,
-  },
+  Hylo { token_a: Pubkey, token_b: Pubkey },
 }
 
 impl Venue {
@@ -96,7 +92,6 @@ pub fn protocol_to_venue(
   request: &QuoteRequest,
 ) -> Result<Venue, TradingVenueError> {
   match venue.protocol() {
-    PoolProtocol::RaydiumAMM => Ok(Venue::RaydiumAmm),
     PoolProtocol::HyloExchange => Ok(Venue::Hylo {
       token_a: request.input_mint,
       token_b: request.output_mint,
@@ -295,10 +290,13 @@ mod tests {
   #[test]
   fn protocol_maps_to_venue() {
     let request = request();
-    let raydium = mock_venue(PoolProtocol::RaydiumAMM, vec![]);
+    let hylo = mock_venue(PoolProtocol::HyloExchange, vec![]);
     assert_eq!(
-      protocol_to_venue(&raydium, &request).unwrap(),
-      Venue::RaydiumAmm
+      protocol_to_venue(&hylo, &request).unwrap(),
+      Venue::Hylo {
+        token_a: request.input_mint,
+        token_b: request.output_mint,
+      }
     );
   }
 
@@ -308,7 +306,7 @@ mod tests {
     let venue = MockVenue {
       titan_pda,
       other: Pubkey::new_from_array([8u8; 32]),
-      protocol: PoolProtocol::RaydiumAMM,
+      protocol: PoolProtocol::HyloExchange,
       token_info: vec![],
     };
 
@@ -319,7 +317,13 @@ mod tests {
     // Two venue accounts + the appended program id.
     assert_eq!(accounts.len(), 3);
     assert_eq!(spec.n_accounts, 3);
-    assert_eq!(spec.venue, Venue::RaydiumAmm);
+    assert_eq!(
+      spec.venue,
+      Venue::Hylo {
+        token_a: request().input_mint,
+        token_b: request().output_mint,
+      }
+    );
     assert_eq!((spec.from, spec.to), (0, 1));
 
     // TitanPDA must no longer be marked a signer.
@@ -335,8 +339,10 @@ mod tests {
 
   #[test]
   fn encodes_instruction_data_like_anchor() {
+    let token_a = Pubkey::new_from_array([3u8; 32]);
+    let token_b = Pubkey::new_from_array([4u8; 32]);
     let spec = SwapSpecInputV2 {
-      venue: Venue::RaydiumAmm,
+      venue: Venue::Hylo { token_a, token_b },
       from: 0,
       to: 1,
       weight_nanos: ROUTE_WEIGHT_ALL,
@@ -348,7 +354,9 @@ mod tests {
     expected.extend_from_slice(&5_000u64.to_le_bytes()); // amount
     expected.push(2); // mints
     expected.extend_from_slice(&1u32.to_le_bytes()); // swaps len
-    expected.push(0); // Venue::RaydiumAmm discriminant
+    expected.push(0); // Venue::Hylo discriminant
+    expected.extend_from_slice(token_a.as_ref());
+    expected.extend_from_slice(token_b.as_ref());
     expected.push(0); // from
     expected.push(1); // to
     expected.extend_from_slice(&ROUTE_WEIGHT_ALL.to_le_bytes());
@@ -358,10 +366,9 @@ mod tests {
 
   #[test]
   fn venue_borsh_bytes_are_stable() {
-    assert_eq!(Venue::RaydiumAmm.to_borsh_bytes(), vec![0]);
     let token_a = Pubkey::new_from_array([3u8; 32]);
     let token_b = Pubkey::new_from_array([4u8; 32]);
-    let mut expected = vec![1];
+    let mut expected = vec![0];
     expected.extend_from_slice(token_a.as_ref());
     expected.extend_from_slice(token_b.as_ref());
     assert_eq!(Venue::Hylo { token_a, token_b }.to_borsh_bytes(), expected);

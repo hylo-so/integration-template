@@ -1,20 +1,13 @@
 # Titan V3 Venue Program Template
 
-Standalone exact-in Anchor template for integrating a venue CPI adapter into
-Titan's router program.
-
-This template focuses on the venue integration surface:
+Standalone exact-in Anchor template integrating the Hylo venue CPI adapter
+into Titan's router program.
 
 - `initialize` creates the TitanPDA route signer.
 - `swap_route_v3` validates venue CPI accounts, TitanPDA custody, and route-leg
   serialization in the same shape Titan's router expects.
-- `instructions/venues/raydium_amm.rs` is a real runnable Raydium AMM CPI example.
-- `instructions/venues/template.rs` is the placeholder adapter to replace or
-  rename when adding your own venue.
-
-**To add a venue, follow the checklist in
-`programs/titan-v3-venue-template/src/instructions/venues/README.md`.** To see
-what's still left to fill in, run `make scorecard` from the repo root.
+- `instructions/venues/hylo_router.rs` builds the `hylo-router` `route`
+  instruction for each Hylo leg.
 
 ## Build
 
@@ -68,48 +61,18 @@ and setting `n_accounts`.
 ## Swap Simulation Test
 
 The template ships a LiteSVM integration test that executes swaps through
-`swap_route_v3` using a venue's off-chain builder and checks the simulated output
-against the venue's quote, in every declared direction. Two entry points run the same
-shared suite (`tests/common/mod.rs`):
+`swap_route_v3` using the venue's off-chain builder and checks the simulated
+output against the venue's quote, in every declared direction
+(`tests/hylo_route.rs`).
 
-- `tests/example_route.rs` — the Raydium AMM reference.
-- `tests/your_venue_route.rs` — your venue (fill in its pool + program id).
-
-They **skip** unless their prerequisites are present: `SOLANA_RPC_URL`, the built
+It **skips** unless its prerequisites are present: `SOLANA_RPC_URL`, the built
 program binary at `target/deploy/titan_v3_venue_template.so` (from `anchor
 build`), and a dump of each venue program (auto-dumped into `program-dumps/` on
 first run).
 
 ```bash
 make build-program
-SOLANA_RPC_URL=<mainnet-rpc-url> cargo test --manifest-path program-template/Cargo.toml --release --test example_route -- --nocapture
+SOLANA_RPC_URL=<mainnet-rpc-url> cargo test --manifest-path program-template/Cargo.toml --release --test hylo_route -- --nocapture
 ```
 
-Or run the example and your venue suites separately from the repo root with
-`make test-example` and `make test-venue`.
-
-## Raydium AMM Example
-
-`raydium_amm.rs` is intentionally simple and real, and shows the exact
-responsibility of a venue module: serialize the CPI instruction data and forward
-the account metas in the order produced off-chain.
-
-```rust
-pub const PROGRAM_ID: Pubkey = pubkey!("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8");
-
-pub fn swap_base_in_v2(
-    amount_in: u64,
-    account_metas: &[AccountMeta],
-) -> Result<Vec<Instruction>> {
-    let mut data = Vec::with_capacity(17);
-    data.push(16);
-    data.extend_from_slice(&amount_in.to_le_bytes());
-    data.extend_from_slice(&0u64.to_le_bytes());
-
-    Ok(vec![Instruction {
-        program_id: PROGRAM_ID,
-        accounts: account_metas.to_vec(),
-        data,
-    }])
-}
-```
+Or run it from the repo root with `make test-venue`.

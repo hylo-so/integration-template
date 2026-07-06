@@ -7,12 +7,8 @@ pub const MAX_MINTS: usize = 12;
   AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy, Eq, Debug,
 )]
 pub enum Venue {
-  RaydiumAmm,
   /// Hylo V2, via Hylo's on-chain router.
-  Hylo {
-    token_a: Pubkey,
-    token_b: Pubkey,
-  },
+  Hylo { token_a: Pubkey, token_b: Pubkey },
 }
 
 #[derive(

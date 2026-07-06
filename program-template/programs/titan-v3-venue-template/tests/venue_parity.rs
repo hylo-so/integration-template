@@ -8,7 +8,6 @@ fn venue_enum_matches_route_builder() {
   let token_a = Pubkey::new_from_array([3u8; 32]);
   let token_b = Pubkey::new_from_array([4u8; 32]);
   let cases = [
-    (ProgramVenue::RaydiumAmm, RouteBuilderVenue::RaydiumAmm),
     (
       ProgramVenue::Hylo { token_a, token_b },
       RouteBuilderVenue::Hylo { token_a, token_b },
