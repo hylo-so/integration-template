@@ -51,10 +51,10 @@ rand = "0.9.2"
 assert_no_alloc = { version = "1.1.2", default-features = false }
 anyhow = "1.0"
 anchor-lang = "0.32.1"
-hylo-fix = "0.6.1"
-hylo-core = { git = "https://github.com/hylo-so/sdk", branch = "debt/oracle-interval-slot", features = ["offchain"] }
-hylo-idl = { git = "https://github.com/hylo-so/sdk", branch = "debt/oracle-interval-slot" }
-hylo-quotes = { git = "https://github.com/hylo-so/sdk", branch = "debt/oracle-interval-slot" }
+hylo-fix = "0.7.0"
+hylo-core = { git = "https://github.com/hylo-so/sdk", branch = "debt/heap-allocations", features = ["offchain"] }
+hylo-idl = { git = "https://github.com/hylo-so/sdk", branch = "debt/heap-allocations" }
+hylo-quotes = { git = "https://github.com/hylo-so/sdk", branch = "debt/heap-allocations" }
 
 # Used only for the construction allocation check. Normal tests, including
 # `quoting_speed`, run under true `--release`.
