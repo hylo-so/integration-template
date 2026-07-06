@@ -8032,7 +8032,6 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.8.12",
  "anchor-lang 0.32.1",
- "anchor-spl 0.32.1",
  "anyhow",
  "arrayref",
  "assert_no_alloc",
@@ -8051,7 +8050,6 @@ dependencies = [
  "log",
  "num-traits",
  "num_enum 0.5.11",
- "pyth-solana-receiver-sdk",
  "rand 0.9.4",
  "rstest",
  "safe-transmute",

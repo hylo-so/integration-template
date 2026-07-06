@@ -9,19 +9,23 @@ intact as the baseline).
 Hylo is an LST-collateralized exchange, not a pool AMM: it mints/redeems the
 hyUSD stablecoin and the xSOL levercoin against LST collateral, converts
 between them, and swaps LST<->LST through its vaults. One venue
-(`src/hylo/mod.rs`, `HyloVenue`) covers all 12 directions over
+(`src/hylo/`, `HyloVenue`) covers all 12 directions over
 `[jitoSOL, hyloSOL, hyUSD, xSOL]`; the market account is Hylo's global state
-(`pda::HYLO`). Quote math calls the same `hylo-core` crate the on-chain
-program executes, with amount-independent state (NAVs, conversions, fee
-curves, rebalance mode) precomputed per `update_state`. LST payouts are
-capped by live vault balances.
+(`pda::HYLO`).
+
+Both halves go through Hylo's standard interfaces, exactly like the Jupiter
+integration: quotes load `ProtocolState` from `hylo-quotes` (the same
+`hylo-core` math the on-chain program executes), and every swap leg is one
+`hylo-router` `route` instruction — the router resolves the exchange
+instruction from the mint pair on-chain.
 
 Layers:
 
-- Quote: `src/hylo/mod.rs` (`HyloVenue`, `HyloOp`, `parse_pool_creations` —
+- Quote: `src/hylo/` (`HyloVenue`, `HyloOp`, `parse_pool_creations` —
   a "pool creation" is `register_lst`)
-- Route builder: `Venue::HyloExchange { op }` in `src/swap_route/mod.rs`
-- Program: `program-template/.../instructions/venues/hylo_exchange.rs`
+- Route builder: `Venue::Hylo { token_a, token_b }` in
+  `src/swap_route/mod.rs`
+- Program: `program-template/.../instructions/venues/hylo_router.rs`
 - Tests: `tests/hylo.rs`, `tests/hylo_creation.rs`,
   `program-template/.../tests/hylo_route.rs`
 
@@ -34,20 +38,15 @@ Hylo V2 currently runs as the mainnet **shadow** deployment
 program id and PDA at the live V2 deployment. When V2 is promoted to the
 canonical id, drop `shadow` from the `default` feature lists in `Cargo.toml`
 and `program-template/programs/titan-v3-venue-template/Cargo.toml` and update
-`HYLO_EXCHANGE` in the `Makefile`.
+`HYLO_EXCHANGE` / `HYLO_ROUTER` in the `Makefile`.
 
 ### Known caveats (shadow, as of 2026-07)
 
-- The RPC-gated simulation tests require the shadow SOL/USD Pyth feed
-  (`7AviUf9n...`) to be fresh within `oracle_interval_secs` (currently 10s on
-  shadow) at snapshot time; when the shadow price crank lags, `update_state`
-  fails with `PythOracleOutdated` and the suite reads red. Retry, or bump the
-  shadow oracle interval.
-- Hylo's collateral-ratio fee curves are piecewise with non-uniform slopes,
-  so the output function has small locally-convex regions (~0.1%) on the
-  low-TVL shadow deployment. Titan's `price_monotone` / `mean_value_theorem`
-  tolerances can trip on these; see the notes in `src/hylo/mod.rs` around
-  `PRICE_PROBE_DELTA`.
+The RPC-gated simulation tests require the shadow SOL/USD Pyth feed
+(`7AviUf9n...`) to be fresh within `oracle_interval_secs` (currently 10s on
+shadow) at snapshot time; when the shadow price crank lags, `update_state`
+fails with `PythOracleOutdated` and the suite reads red. Retry, or bump the
+shadow oracle interval.
 
 ---
 
