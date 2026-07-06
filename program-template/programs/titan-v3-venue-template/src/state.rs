@@ -3,29 +3,16 @@ use anchor_lang::prelude::*;
 pub const MAX_SWAPS: usize = 12;
 pub const MAX_MINTS: usize = 12;
 
-/// Hylo exchange operation for a route leg. Must stay byte-for-byte identical
-/// to `HyloOp` in the off-chain route builder (`src/hylo/mod.rs`).
-#[derive(
-  Debug, Clone, Copy, PartialEq, Eq, AnchorSerialize, AnchorDeserialize,
-)]
-pub enum HyloOp {
-  MintStablecoin,
-  RedeemStablecoin,
-  MintLevercoin,
-  RedeemLevercoin,
-  ConvertStableToLever,
-  ConvertLeverToStable,
-  SwapLstToLst,
-}
-
 #[derive(
   AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Copy, Eq, Debug,
 )]
 pub enum Venue {
   RaydiumAmm,
-  /// Hylo V2 exchange; `op` selects the exchange instruction to CPI.
-  HyloExchange {
-    op: HyloOp,
+  /// Hylo V2, executed through Hylo's on-chain router: the mint pair is all
+  /// the router needs to resolve the exchange instruction.
+  Hylo {
+    token_a: Pubkey,
+    token_b: Pubkey,
   },
 }
 

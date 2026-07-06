@@ -1,24 +1,20 @@
+mod instructions;
+mod quote;
+
 use std::error::Error;
 
 use ahash::HashSet;
 use anchor_lang::AccountDeserialize;
-use anchor_lang::prelude::Clock;
-use anchor_spl::token::TokenAccount;
-use anyhow::{Result as AnyhowResult, ensure};
 use async_trait::async_trait;
-use borsh::{BorshDeserialize, BorshSerialize};
-use fix::prelude::UFix64;
 use hylo_idl::exchange::accounts::Hylo;
-use hylo_idl::exchange::client::args;
-use hylo_idl::exchange::instruction_builders;
 use hylo_idl::tokens::{HYLOSOL, HYUSD, JITOSOL, TokenMint, XSOL};
-use hylo_idl::{exchange, pda};
-use hylo_quotes::protocol_state::{ProtocolAccounts, ProtocolState};
-use hylo_quotes::token_operation::TokenOperationExt;
+use hylo_idl::{exchange, pda, router};
+use hylo_quotes::protocol_state::ProtocolAccounts;
 use solana_account::Account;
 use solana_instruction::Instruction;
 use solana_pubkey::Pubkey;
 
+use self::quote::HyloQuoteState;
 use crate::account_caching::AccountsCache;
 use crate::trading_venue::error::TradingVenueError;
 use crate::trading_venue::protocol::PoolProtocol;
@@ -28,8 +24,12 @@ use crate::trading_venue::{
   FromAccount, QuoteRequest, QuoteResult, SwapType, TradingVenue,
 };
 
-/// Hylo V2 exchange program id. Resolves to the live "shadow" V2 deployment
-/// with the default `shadow` feature, or to the canonical id without it.
+/// Hylo router program id — the venue's CPI entrypoint, as in the Jupiter
+/// integration. Resolves to the live "shadow" V2 deployment with the default
+/// `shadow` feature, or to the canonical id without it.
+pub const HYLO_ROUTER_PROGRAM_ID: Pubkey = router::ID_CONST;
+
+/// Hylo V2 exchange program id — the program the router CPIs into.
 pub const HYLO_EXCHANGE_PROGRAM_ID: Pubkey = exchange::ID_CONST;
 
 /// Hylo's global state account — this venue's pool/market id.
@@ -45,20 +45,12 @@ const REGISTER_LST_HYLO_INDEX: usize = 1;
 /// Index of the newly registered LST mint in `register_lst`.
 const REGISTER_LST_MINT_INDEX: usize = 8;
 
-/// Probe distance (in raw input atoms) for the finite-difference marginal
-/// price. Large enough that integer truncation of the output amount is
-/// negligible against the tests' relative tolerances, small enough that the
-/// secant stays local: ~0.001 jitoSOL or ~1 hyUSD.
-const PRICE_PROBE_DELTA: u64 = 1 << 20;
-
 /// The Hylo exchange operation behind a (input mint, output mint) direction.
 ///
-/// The on-chain program template's venue adapter receives this through the
-/// route `Venue` enum and maps it to the exchange instruction discriminator,
-/// so the variant order here is part of the route wire format.
-#[derive(
-  Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize,
-)]
+/// Off-chain only: selects the `TokenOperation` for quoting and the account
+/// context for the routed instruction. On-chain, Hylo's router resolves the
+/// same mapping from the mint pair itself.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HyloOp {
   /// LST -> hyUSD (`mint_stablecoin_lst`)
   MintStablecoin,
@@ -134,15 +126,10 @@ pub fn parse_pool_creations(
     .collect()
 }
 
-/// Accounts fetched on top of [`ProtocolAccounts::pubkeys`]: the LST mints
-/// (token metadata) and the LST collateral vaults (payout caps).
-fn extra_keys() -> [Pubkey; 4] {
-  [
-    JITOSOL::MINT,
-    HYLOSOL::MINT,
-    pda::lst_vault(JITOSOL::MINT),
-    pda::lst_vault(HYLOSOL::MINT),
-  ]
+/// Accounts fetched on top of [`ProtocolAccounts::pubkeys`]: the LST mints,
+/// for token metadata.
+fn extra_keys() -> [Pubkey; 2] {
+  [JITOSOL::MINT, HYLOSOL::MINT]
 }
 
 /// Every account needed to rebuild quoting state, in fetch order: the SDK's
@@ -153,127 +140,8 @@ fn update_keys() -> Vec<Pubkey> {
   keys
 }
 
-/// SDK protocol state plus the venue-local payout caps.
-struct HyloQuoteState {
-  state: ProtocolState<Clock>,
-  jitosol_vault_balance: u64,
-  hylosol_vault_balance: u64,
-}
-
-impl HyloQuoteState {
-  fn vault_balance(&self, lst_mint: &Pubkey) -> u64 {
-    if *lst_mint == JITOSOL::MINT {
-      self.jitosol_vault_balance
-    } else {
-      self.hylosol_vault_balance
-    }
-  }
-
-  /// Cap an LST payout by the collateral vault's live balance: the on-chain
-  /// transfer would fail beyond it, so a larger quote is a liquidity miss.
-  fn cap_to_vault(&self, lst_out: u64, lst_mint: &Pubkey) -> AnyhowResult<u64> {
-    ensure!(
-      lst_out <= self.vault_balance(lst_mint),
-      "LST payout exceeds vault balance"
-    );
-    Ok(lst_out)
-  }
-}
-
-/// Compute the raw-atom output for `amount` atoms of `input_mint` by
-/// dispatching the runtime mint pair onto the SDK's statically typed
-/// [`hylo_quotes::token_operation::TokenOperation`] impls.
-fn hylo_out(
-  quote_state: &HyloQuoteState,
-  op: HyloOp,
-  input_mint: &Pubkey,
-  output_mint: &Pubkey,
-  amount: u64,
-) -> AnyhowResult<u64> {
-  let state = &quote_state.state;
-  let from_jito = *input_mint == JITOSOL::MINT;
-  let to_jito = *output_mint == JITOSOL::MINT;
-  let output = match op {
-    HyloOp::MintStablecoin if from_jito => {
-      state
-        .output::<JITOSOL, HYUSD>(UFix64::new(amount))?
-        .out_amount
-        .bits
-    }
-    HyloOp::MintStablecoin => {
-      state
-        .output::<HYLOSOL, HYUSD>(UFix64::new(amount))?
-        .out_amount
-        .bits
-    }
-    HyloOp::RedeemStablecoin if to_jito => quote_state.cap_to_vault(
-      state
-        .output::<HYUSD, JITOSOL>(UFix64::new(amount))?
-        .out_amount
-        .bits,
-      output_mint,
-    )?,
-    HyloOp::RedeemStablecoin => quote_state.cap_to_vault(
-      state
-        .output::<HYUSD, HYLOSOL>(UFix64::new(amount))?
-        .out_amount
-        .bits,
-      output_mint,
-    )?,
-    HyloOp::MintLevercoin if from_jito => {
-      state
-        .output::<JITOSOL, XSOL>(UFix64::new(amount))?
-        .out_amount
-        .bits
-    }
-    HyloOp::MintLevercoin => {
-      state
-        .output::<HYLOSOL, XSOL>(UFix64::new(amount))?
-        .out_amount
-        .bits
-    }
-    HyloOp::RedeemLevercoin if to_jito => quote_state.cap_to_vault(
-      state
-        .output::<XSOL, JITOSOL>(UFix64::new(amount))?
-        .out_amount
-        .bits,
-      output_mint,
-    )?,
-    HyloOp::RedeemLevercoin => quote_state.cap_to_vault(
-      state
-        .output::<XSOL, HYLOSOL>(UFix64::new(amount))?
-        .out_amount
-        .bits,
-      output_mint,
-    )?,
-    HyloOp::ConvertStableToLever => {
-      state
-        .output::<HYUSD, XSOL>(UFix64::new(amount))?
-        .out_amount
-        .bits
-    }
-    HyloOp::ConvertLeverToStable => {
-      state
-        .output::<XSOL, HYUSD>(UFix64::new(amount))?
-        .out_amount
-        .bits
-    }
-    HyloOp::SwapLstToLst if from_jito => quote_state.cap_to_vault(
-      state
-        .output::<JITOSOL, HYLOSOL>(UFix64::new(amount))?
-        .out_amount
-        .bits,
-      output_mint,
-    )?,
-    HyloOp::SwapLstToLst => quote_state.cap_to_vault(
-      state
-        .output::<HYLOSOL, JITOSOL>(UFix64::new(amount))?
-        .out_amount
-        .bits,
-      output_mint,
-    )?,
-  };
-  Ok(output)
+fn boxed_err<E: Into<Box<dyn Error>>>(err: E) -> TradingVenueError {
+  TradingVenueError::SomethingWentWrong(err.into())
 }
 
 /// Hylo V2 exchange venue state.
@@ -289,10 +157,6 @@ pub struct HyloVenue {
   initialized: bool,
   /// Quote state snapshot; shares the on-chain math via the Hylo SDK.
   state: Option<HyloQuoteState>,
-}
-
-fn boxed_err<E: Into<Box<dyn Error>>>(err: E) -> TradingVenueError {
-  TradingVenueError::SomethingWentWrong(err.into())
 }
 
 impl FromAccount for HyloVenue {
@@ -324,11 +188,15 @@ impl TradingVenue for HyloVenue {
   }
 
   fn program_id(&self) -> Pubkey {
-    HYLO_EXCHANGE_PROGRAM_ID
+    HYLO_ROUTER_PROGRAM_ID
   }
 
   fn program_dependencies(&self) -> Vec<Pubkey> {
-    vec![self.program_id(), TOKEN_PROGRAM_ID]
+    vec![
+      self.program_id(),
+      HYLO_EXCHANGE_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+    ]
   }
 
   fn market_id(&self) -> Pubkey {
@@ -363,8 +231,6 @@ impl TradingVenue for HyloVenue {
     let protocol_accounts =
       ProtocolAccounts::try_from((&keys[..sdk_count], &accounts[..sdk_count]))
         .map_err(boxed_err)?;
-    let state =
-      ProtocolState::try_from(&protocol_accounts).map_err(boxed_err)?;
 
     let get = |index: usize| -> Result<&Account, TradingVenueError> {
       accounts[index]
@@ -373,16 +239,6 @@ impl TradingVenue for HyloVenue {
     };
     let jitosol_mint_account = get(sdk_count)?;
     let hylosol_mint_account = get(sdk_count + 1)?;
-    let parse_vault =
-      |account: &Account, key: &Pubkey| -> Result<u64, TradingVenueError> {
-        TokenAccount::try_deserialize(&mut account.data.as_slice())
-          .map(|vault| vault.amount)
-          .map_err(|_| TradingVenueError::DeserializationFailed((*key).into()))
-      };
-    let jitosol_vault_balance =
-      parse_vault(get(sdk_count + 2)?, &keys[sdk_count + 2])?;
-    let hylosol_vault_balance =
-      parse_vault(get(sdk_count + 3)?, &keys[sdk_count + 3])?;
 
     // Token metadata: [jitoSOL, hyloSOL, hyUSD, xSOL]. All are classic SPL
     // Token mints; the epoch only matters for Token-2022 transfer fees.
@@ -392,11 +248,7 @@ impl TradingVenue for HyloVenue {
       TokenInfo::new(&HYUSD::MINT, &protocol_accounts.hyusd_mint, u64::MAX)?,
       TokenInfo::new(&XSOL::MINT, &protocol_accounts.xsol_mint, u64::MAX)?,
     ];
-    self.state = Some(HyloQuoteState {
-      state,
-      jitosol_vault_balance,
-      hylosol_vault_balance,
-    });
+    self.state = Some(HyloQuoteState::build(&protocol_accounts)?);
     self.initialized = true;
     Ok(())
   }
@@ -415,31 +267,15 @@ impl TradingVenue for HyloVenue {
       let op = hylo_op(&request.input_mint, &request.output_mint)
         .ok_or(TradingVenueError::InvalidMint(request.input_mint.into()))?;
 
-      let f = |amount: u64| {
-        hylo_out(state, op, &request.input_mint, &request.output_mint, amount)
-      };
-
-      // Marginal price f'(amount) by secant. Backward difference wherever
-      // possible: for the concave output function both probe points stay
-      // inside the already-validated range, and the secant of a concave f
-      // brackets correctly for the mean-value and monotonicity invariants.
-      let quoted = f(request.amount).and_then(|expected_output| {
-        let (x0, y0, x1, y1) = if request.amount >= PRICE_PROBE_DELTA {
-          let lo = request.amount - PRICE_PROBE_DELTA;
-          (lo, f(lo)?, request.amount, expected_output)
-        } else {
-          let hi = request.amount + PRICE_PROBE_DELTA;
-          (request.amount, expected_output, hi, f(hi)?)
-        };
-        let price = (y1.saturating_sub(y0)) as f64 / (x1 - x0) as f64;
-        Ok((expected_output, price))
-      });
-
-      // A math error means the operation is blocked (rebalance mode /
-      // mint cap / paused) or the size exceeds what the protocol accepts.
+      let quoted = state.quote(
+        op,
+        &request.input_mint,
+        &request.output_mint,
+        request.amount,
+      );
       let (expected_output, not_enough_liquidity, price) = match quoted {
-        Ok((expected_output, price)) => (expected_output, false, price),
-        Err(_) => (0, true, 0.0),
+        Some((expected_output, price)) => (expected_output, false, price),
+        None => (0, true, 0.0),
       };
       Ok(QuoteResult {
         input_mint: request.input_mint,
@@ -459,68 +295,6 @@ impl TradingVenue for HyloVenue {
   ) -> Result<Instruction, TradingVenueError> {
     let op = hylo_op(&request.input_mint, &request.output_mint)
       .ok_or(TradingVenueError::InvalidMint(request.input_mint.into()))?;
-    let amount = request.amount;
-    let instruction = match op {
-      HyloOp::MintStablecoin => instruction_builders::mint_stablecoin_lst(
-        user,
-        request.input_mint,
-        &args::MintStablecoinLst {
-          amount_lst_to_deposit: amount,
-          slippage_config: None,
-        },
-      ),
-      HyloOp::RedeemStablecoin => instruction_builders::redeem_stablecoin_lst(
-        user,
-        request.output_mint,
-        &args::RedeemStablecoinLst {
-          amount_to_redeem: amount,
-          slippage_config: None,
-        },
-      ),
-      HyloOp::MintLevercoin => instruction_builders::mint_levercoin_lst(
-        user,
-        request.input_mint,
-        &args::MintLevercoinLst {
-          amount_lst_to_deposit: amount,
-          slippage_config: None,
-        },
-      ),
-      HyloOp::RedeemLevercoin => instruction_builders::redeem_levercoin_lst(
-        user,
-        request.output_mint,
-        &args::RedeemLevercoinLst {
-          amount_to_redeem: amount,
-          slippage_config: None,
-        },
-      ),
-      HyloOp::ConvertStableToLever => {
-        instruction_builders::convert_stable_to_lever_lst(
-          user,
-          &args::ConvertStableToLeverLst {
-            amount_stablecoin: amount,
-            slippage_config: None,
-          },
-        )
-      }
-      HyloOp::ConvertLeverToStable => {
-        instruction_builders::convert_lever_to_stable_lst(
-          user,
-          &args::ConvertLeverToStableLst {
-            amount_levercoin: amount,
-            slippage_config: None,
-          },
-        )
-      }
-      HyloOp::SwapLstToLst => instruction_builders::swap_lst_to_lst(
-        user,
-        request.input_mint,
-        request.output_mint,
-        &args::SwapLstToLst {
-          amount_lst_a: amount,
-          slippage_config: None,
-        },
-      ),
-    };
-    Ok(instruction)
+    Ok(instructions::swap_instruction(op, &request, user))
   }
 }

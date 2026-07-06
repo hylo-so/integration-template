@@ -30,7 +30,6 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_instruction::{AccountMeta, Instruction};
 use solana_pubkey::Pubkey;
 
-use crate::hylo::{HyloOp, hylo_op};
 use crate::trading_venue::error::TradingVenueError;
 use crate::trading_venue::protocol::PoolProtocol;
 use crate::trading_venue::{QuoteRequest, TradingVenue};
@@ -52,10 +51,11 @@ pub const ROUTE_WEIGHT_ALL: u32 = 1_000_000_000;
 )]
 pub enum Venue {
   RaydiumAmm,
-  /// Hylo V2 exchange. `op` tells the on-chain adapter which exchange
-  /// instruction (discriminator + accounts shape) executes this leg.
-  HyloExchange {
-    op: HyloOp,
+  /// Hylo V2, executed through Hylo's on-chain router: the mint pair is all
+  /// the router needs to resolve the exchange instruction.
+  Hylo {
+    token_a: Pubkey,
+    token_b: Pubkey,
   },
 }
 
@@ -98,11 +98,10 @@ pub fn protocol_to_venue(
 ) -> Result<Venue, TradingVenueError> {
   match venue.protocol() {
     PoolProtocol::RaydiumAMM => Ok(Venue::RaydiumAmm),
-    PoolProtocol::HyloExchange => {
-      let op = hylo_op(&request.input_mint, &request.output_mint)
-        .ok_or(TradingVenueError::InvalidMint(request.input_mint.into()))?;
-      Ok(Venue::HyloExchange { op })
-    }
+    PoolProtocol::HyloExchange => Ok(Venue::Hylo {
+      token_a: request.input_mint,
+      token_b: request.output_mint,
+    }),
   }
 }
 
@@ -361,19 +360,11 @@ mod tests {
   #[test]
   fn venue_borsh_bytes_are_stable() {
     assert_eq!(Venue::RaydiumAmm.to_borsh_bytes(), vec![0]);
-    assert_eq!(
-      Venue::HyloExchange {
-        op: HyloOp::MintStablecoin,
-      }
-      .to_borsh_bytes(),
-      vec![1, 0]
-    );
-    assert_eq!(
-      Venue::HyloExchange {
-        op: HyloOp::SwapLstToLst,
-      }
-      .to_borsh_bytes(),
-      vec![1, 6]
-    );
+    let token_a = Pubkey::new_from_array([3u8; 32]);
+    let token_b = Pubkey::new_from_array([4u8; 32]);
+    let mut expected = vec![1];
+    expected.extend_from_slice(token_a.as_ref());
+    expected.extend_from_slice(token_b.as_ref());
+    assert_eq!(Venue::Hylo { token_a, token_b }.to_borsh_bytes(), expected);
   }
 }
