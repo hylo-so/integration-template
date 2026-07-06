@@ -1,12 +1,14 @@
 use anchor_lang::prelude::Clock;
-use anyhow::Result as AnyhowResult;
+use anyhow::{Result as AnyhowResult, anyhow};
 use fix::prelude::UFix64;
-use hylo_idl::tokens::{HYLOSOL, HYUSD, JITOSOL, SHYUSD, TokenMint, XSOL};
+use hylo_idl::tokens::{
+  CBBTC, HYLOSOL, HYUSD, JITOSOL, SHYUSD, TokenMint, USDC, XBTC, XSOL,
+};
 use hylo_quotes::protocol_state::{ProtocolAccounts, ProtocolState};
 use hylo_quotes::token_operation::TokenOperationExt;
 use solana_pubkey::Pubkey;
 
-use super::{HyloOp, boxed_err};
+use super::boxed_err;
 use crate::trading_venue::error::TradingVenueError;
 
 /// Probe distance (in raw input atoms) for the finite-difference marginal
@@ -31,7 +33,6 @@ impl HyloQuoteState {
   /// is blocked or the size exceeds what the protocol accepts.
   pub fn quote(
     &self,
-    op: HyloOp,
     input_mint: &Pubkey,
     output_mint: &Pubkey,
     amount: u64,
@@ -44,7 +45,7 @@ impl HyloQuoteState {
     } else {
       (amount, amount + PRICE_PROBE_DELTA)
     };
-    let f = |x: u64| self.out(op, input_mint, output_mint, x);
+    let f = |x: u64| self.out(input_mint, output_mint, x);
     match (f(x0), f(x1)) {
       (Ok(y0), Ok(y1)) => {
         let expected_output = if x0 == amount { y0 } else { y1 };
@@ -55,10 +56,10 @@ impl HyloQuoteState {
     }
   }
 
-  /// Raw-atom output for `amount` atoms of `input_mint`.
+  /// Raw-atom output for `amount` atoms of `input_mint`. One arm per routable
+  /// pair, mirroring `hylo-router`'s `resolve_route`.
   fn out(
     &self,
-    op: HyloOp,
     input_mint: &Pubkey,
     output_mint: &Pubkey,
     amount: u64,
@@ -72,23 +73,36 @@ impl HyloQuoteState {
           .bits
       };
     }
-    let from_jito = *input_mint == JITOSOL::MINT;
-    let to_jito = *output_mint == JITOSOL::MINT;
-    let output = match op {
-      HyloOp::MintStablecoin if from_jito => out!(JITOSOL, HYUSD),
-      HyloOp::MintStablecoin => out!(HYLOSOL, HYUSD),
-      HyloOp::RedeemStablecoin if to_jito => out!(HYUSD, JITOSOL),
-      HyloOp::RedeemStablecoin => out!(HYUSD, HYLOSOL),
-      HyloOp::MintLevercoin if from_jito => out!(JITOSOL, XSOL),
-      HyloOp::MintLevercoin => out!(HYLOSOL, XSOL),
-      HyloOp::RedeemLevercoin if to_jito => out!(XSOL, JITOSOL),
-      HyloOp::RedeemLevercoin => out!(XSOL, HYLOSOL),
-      HyloOp::ConvertStableToLever => out!(HYUSD, XSOL),
-      HyloOp::ConvertLeverToStable => out!(XSOL, HYUSD),
-      HyloOp::SwapLstToLst if from_jito => out!(JITOSOL, HYLOSOL),
-      HyloOp::SwapLstToLst => out!(HYLOSOL, JITOSOL),
-      HyloOp::EarnPoolDeposit => out!(HYUSD, SHYUSD),
-      HyloOp::EarnPoolWithdraw => out!(SHYUSD, HYUSD),
+    let output = match (*input_mint, *output_mint) {
+      (JITOSOL::MINT, HYUSD::MINT) => out!(JITOSOL, HYUSD),
+      (HYLOSOL::MINT, HYUSD::MINT) => out!(HYLOSOL, HYUSD),
+      (JITOSOL::MINT, XSOL::MINT) => out!(JITOSOL, XSOL),
+      (HYLOSOL::MINT, XSOL::MINT) => out!(HYLOSOL, XSOL),
+      (HYUSD::MINT, JITOSOL::MINT) => out!(HYUSD, JITOSOL),
+      (HYUSD::MINT, HYLOSOL::MINT) => out!(HYUSD, HYLOSOL),
+      (XSOL::MINT, JITOSOL::MINT) => out!(XSOL, JITOSOL),
+      (XSOL::MINT, HYLOSOL::MINT) => out!(XSOL, HYLOSOL),
+      (HYUSD::MINT, XSOL::MINT) => out!(HYUSD, XSOL),
+      (XSOL::MINT, HYUSD::MINT) => out!(XSOL, HYUSD),
+      (JITOSOL::MINT, HYLOSOL::MINT) => out!(JITOSOL, HYLOSOL),
+      (HYLOSOL::MINT, JITOSOL::MINT) => out!(HYLOSOL, JITOSOL),
+      (CBBTC::MINT, HYUSD::MINT) => out!(CBBTC, HYUSD),
+      (CBBTC::MINT, XBTC::MINT) => out!(CBBTC, XBTC),
+      (HYUSD::MINT, CBBTC::MINT) => out!(HYUSD, CBBTC),
+      (XBTC::MINT, CBBTC::MINT) => out!(XBTC, CBBTC),
+      (HYUSD::MINT, XBTC::MINT) => out!(HYUSD, XBTC),
+      (XBTC::MINT, HYUSD::MINT) => out!(XBTC, HYUSD),
+      (JITOSOL::MINT, USDC::MINT) => out!(JITOSOL, USDC),
+      (HYLOSOL::MINT, USDC::MINT) => out!(HYLOSOL, USDC),
+      (USDC::MINT, JITOSOL::MINT) => out!(USDC, JITOSOL),
+      (USDC::MINT, HYLOSOL::MINT) => out!(USDC, HYLOSOL),
+      (CBBTC::MINT, USDC::MINT) => out!(CBBTC, USDC),
+      (USDC::MINT, CBBTC::MINT) => out!(USDC, CBBTC),
+      (USDC::MINT, HYUSD::MINT) => out!(USDC, HYUSD),
+      (HYUSD::MINT, USDC::MINT) => out!(HYUSD, USDC),
+      (HYUSD::MINT, SHYUSD::MINT) => out!(HYUSD, SHYUSD),
+      (SHYUSD::MINT, HYUSD::MINT) => out!(SHYUSD, HYUSD),
+      _ => Err(anyhow!("unsupported pair"))?,
     };
     Ok(output)
   }

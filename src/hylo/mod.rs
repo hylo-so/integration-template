@@ -7,7 +7,9 @@ use ahash::HashSet;
 use anchor_lang::AccountDeserialize;
 use async_trait::async_trait;
 use hylo_idl::exchange::accounts::Hylo;
-use hylo_idl::tokens::{HYLOSOL, HYUSD, JITOSOL, SHYUSD, TokenMint, XSOL};
+use hylo_idl::tokens::{
+  CBBTC, HYLOSOL, HYUSD, JITOSOL, SHYUSD, TokenMint, USDC, XBTC, XSOL,
+};
 use hylo_idl::{earn_pool, exchange, pda, router};
 use hylo_quotes::protocol_state::ProtocolAccounts;
 use solana_account::Account;
@@ -36,6 +38,38 @@ pub const HYLO_EARN_POOL_PROGRAM_ID: Pubkey = earn_pool::ID_CONST;
 /// Hylo global state account.
 pub const HYLO_STATE_ID: Pubkey = pda::HYLO;
 
+/// Directed pairs served by `hylo-router`'s `resolve_route`.
+const ROUTABLE_PAIRS: [(Pubkey, Pubkey); 28] = [
+  (JITOSOL::MINT, HYUSD::MINT),
+  (HYLOSOL::MINT, HYUSD::MINT),
+  (JITOSOL::MINT, XSOL::MINT),
+  (HYLOSOL::MINT, XSOL::MINT),
+  (HYUSD::MINT, JITOSOL::MINT),
+  (HYUSD::MINT, HYLOSOL::MINT),
+  (XSOL::MINT, JITOSOL::MINT),
+  (XSOL::MINT, HYLOSOL::MINT),
+  (HYUSD::MINT, XSOL::MINT),
+  (XSOL::MINT, HYUSD::MINT),
+  (JITOSOL::MINT, HYLOSOL::MINT),
+  (HYLOSOL::MINT, JITOSOL::MINT),
+  (CBBTC::MINT, HYUSD::MINT),
+  (CBBTC::MINT, XBTC::MINT),
+  (HYUSD::MINT, CBBTC::MINT),
+  (XBTC::MINT, CBBTC::MINT),
+  (HYUSD::MINT, XBTC::MINT),
+  (XBTC::MINT, HYUSD::MINT),
+  (JITOSOL::MINT, USDC::MINT),
+  (HYLOSOL::MINT, USDC::MINT),
+  (USDC::MINT, JITOSOL::MINT),
+  (USDC::MINT, HYLOSOL::MINT),
+  (CBBTC::MINT, USDC::MINT),
+  (USDC::MINT, CBBTC::MINT),
+  (USDC::MINT, HYUSD::MINT),
+  (HYUSD::MINT, USDC::MINT),
+  (HYUSD::MINT, SHYUSD::MINT),
+  (SHYUSD::MINT, HYUSD::MINT),
+];
+
 /// Anchor discriminator of the exchange's `register_lst` instruction.
 const REGISTER_LST_DISCRIMINATOR: [u8; 8] =
   [167, 114, 254, 24, 190, 221, 82, 107];
@@ -44,62 +78,6 @@ const REGISTER_LST_DISCRIMINATOR: [u8; 8] =
 const REGISTER_LST_HYLO_INDEX: usize = 1;
 /// Index of the newly registered LST mint in `register_lst`.
 const REGISTER_LST_MINT_INDEX: usize = 8;
-
-/// The Hylo exchange operation behind a swap direction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HyloOp {
-  /// LST -> hyUSD (`mint_stablecoin_lst`)
-  MintStablecoin,
-  /// hyUSD -> LST (`redeem_stablecoin_lst`)
-  RedeemStablecoin,
-  /// LST -> xSOL (`mint_levercoin_lst`)
-  MintLevercoin,
-  /// xSOL -> LST (`redeem_levercoin_lst`)
-  RedeemLevercoin,
-  /// hyUSD -> xSOL (`convert_stable_to_lever_lst`)
-  ConvertStableToLever,
-  /// xSOL -> hyUSD (`convert_lever_to_stable_lst`)
-  ConvertLeverToStable,
-  /// LST -> LST (`swap_lst_to_lst`)
-  SwapLstToLst,
-  /// hyUSD -> sHYUSD (earn pool `user_deposit`)
-  EarnPoolDeposit,
-  /// sHYUSD -> hyUSD (earn pool `user_withdraw`)
-  EarnPoolWithdraw,
-}
-
-fn is_lst(mint: &Pubkey) -> bool {
-  *mint == JITOSOL::MINT || *mint == HYLOSOL::MINT
-}
-
-/// Map a swap direction to the Hylo exchange operation serving it, or `None`
-/// if the pair is not tradable on this venue.
-pub fn hylo_op(input_mint: &Pubkey, output_mint: &Pubkey) -> Option<HyloOp> {
-  if is_lst(input_mint) && *output_mint == HYUSD::MINT {
-    Some(HyloOp::MintStablecoin)
-  } else if *input_mint == HYUSD::MINT && is_lst(output_mint) {
-    Some(HyloOp::RedeemStablecoin)
-  } else if is_lst(input_mint) && *output_mint == XSOL::MINT {
-    Some(HyloOp::MintLevercoin)
-  } else if *input_mint == XSOL::MINT && is_lst(output_mint) {
-    Some(HyloOp::RedeemLevercoin)
-  } else if *input_mint == HYUSD::MINT && *output_mint == XSOL::MINT {
-    Some(HyloOp::ConvertStableToLever)
-  } else if *input_mint == XSOL::MINT && *output_mint == HYUSD::MINT {
-    Some(HyloOp::ConvertLeverToStable)
-  } else if is_lst(input_mint)
-    && is_lst(output_mint)
-    && input_mint != output_mint
-  {
-    Some(HyloOp::SwapLstToLst)
-  } else if *input_mint == HYUSD::MINT && *output_mint == SHYUSD::MINT {
-    Some(HyloOp::EarnPoolDeposit)
-  } else if *input_mint == SHYUSD::MINT && *output_mint == HYUSD::MINT {
-    Some(HyloOp::EarnPoolWithdraw)
-  } else {
-    None
-  }
-}
 
 /// Detects `register_lst` instructions, which make a new LST tradable
 /// against hyUSD and xSOL.
@@ -127,8 +105,8 @@ pub fn parse_pool_creations(
 }
 
 /// Accounts needed beyond [`ProtocolAccounts::pubkeys`].
-fn extra_keys() -> [Pubkey; 2] {
-  [JITOSOL::MINT, HYLOSOL::MINT]
+fn extra_keys() -> [Pubkey; 4] {
+  [JITOSOL::MINT, HYLOSOL::MINT, USDC::MINT, CBBTC::MINT]
 }
 
 /// Every account needed to rebuild quoting state, in fetch order.
@@ -146,7 +124,8 @@ fn boxed_err<E: Into<Box<dyn Error>>>(err: E) -> TradingVenueError {
 pub struct HyloVenue {
   /// Address of Hylo's global state account (`pda::HYLO`).
   pub pool_id: Pubkey,
-  /// Token metadata for `[jitoSOL, hyloSOL, hyUSD, xSOL, sHYUSD]`, populated
+  /// Token metadata for
+  /// `[jitoSOL, hyloSOL, hyUSD, xSOL, sHYUSD, USDC, cbBTC, xBTC]`, populated
   /// in `update_state`.
   token_info: Vec<TokenInfo>,
   /// Accounts that must be fetched to refresh quoting state.
@@ -202,13 +181,15 @@ impl TradingVenue for HyloVenue {
       self.token_info.iter().map(|info| info.pubkey).collect();
     mints
       .iter()
-      .enumerate()
-      .flat_map(|(from, input_mint)| {
+      .zip(0u8..)
+      .flat_map(|(input_mint, from)| {
         mints
           .iter()
-          .enumerate()
-          .filter_map(move |(to, output_mint)| {
-            hylo_op(input_mint, output_mint).map(|_| (from as u8, to as u8))
+          .zip(0u8..)
+          .filter_map(move |(output_mint, to)| {
+            ROUTABLE_PAIRS
+              .contains(&(*input_mint, *output_mint))
+              .then_some((from, to))
           })
       })
       .collect()
@@ -251,6 +232,8 @@ impl TradingVenue for HyloVenue {
     };
     let jitosol_mint_account = get(sdk_count)?;
     let hylosol_mint_account = get(sdk_count + 1)?;
+    let usdc_mint_account = get(sdk_count + 2)?;
+    let cbbtc_mint_account = get(sdk_count + 3)?;
 
     // The epoch argument only matters for Token-2022 transfer fees.
     self.token_info = vec![
@@ -259,6 +242,9 @@ impl TradingVenue for HyloVenue {
       TokenInfo::new(&HYUSD::MINT, &protocol_accounts.hyusd_mint, u64::MAX)?,
       TokenInfo::new(&XSOL::MINT, &protocol_accounts.xsol_mint, u64::MAX)?,
       TokenInfo::new(&SHYUSD::MINT, &protocol_accounts.shyusd_mint, u64::MAX)?,
+      TokenInfo::new(&USDC::MINT, usdc_mint_account, u64::MAX)?,
+      TokenInfo::new(&CBBTC::MINT, cbbtc_mint_account, u64::MAX)?,
+      TokenInfo::new(&XBTC::MINT, &protocol_accounts.xbtc_mint, u64::MAX)?,
     ];
     self.state = Some(HyloQuoteState::build(&protocol_accounts)?);
     self.initialized = true;
@@ -276,15 +262,9 @@ impl TradingVenue for HyloVenue {
         .state
         .as_ref()
         .ok_or(TradingVenueError::NotInitialized(self.pool_id.into()))?;
-      let op = hylo_op(&request.input_mint, &request.output_mint)
-        .ok_or(TradingVenueError::InvalidMint(request.input_mint.into()))?;
 
-      let quoted = state.quote(
-        op,
-        &request.input_mint,
-        &request.output_mint,
-        request.amount,
-      );
+      let quoted =
+        state.quote(&request.input_mint, &request.output_mint, request.amount);
       let (expected_output, not_enough_liquidity, price) = match quoted {
         Some((expected_output, price)) => (expected_output, false, price),
         None => (0, true, 0.0),
@@ -305,8 +285,7 @@ impl TradingVenue for HyloVenue {
     request: QuoteRequest,
     user: Pubkey,
   ) -> Result<Instruction, TradingVenueError> {
-    let op = hylo_op(&request.input_mint, &request.output_mint)
-      .ok_or(TradingVenueError::InvalidMint(request.input_mint.into()))?;
-    Ok(instructions::swap_instruction(op, &request, user))
+    instructions::swap_instruction(&request, user)
+      .ok_or(TradingVenueError::InvalidMint(request.input_mint.into()))
   }
 }
