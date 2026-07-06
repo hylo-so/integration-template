@@ -24,6 +24,7 @@ fn programs_present() -> bool {
   [
     "hyshEX5sNEYhnYPMm8MwMThhBRPuLN3rjoYDbC9esPQ.so",
     "HyshRo2hkqXGcyCfKU22zhSBPMwokmAnEoxDGeVQz7d.so",
+    "HYShEAST5PHe5EFxUPYUgzXsmSo88VVdDqJE21jXBQ7N.so",
   ]
   .iter()
   .all(|p| manifest().join("programs").join(p).exists())

@@ -7,8 +7,8 @@ use ahash::HashSet;
 use anchor_lang::AccountDeserialize;
 use async_trait::async_trait;
 use hylo_idl::exchange::accounts::Hylo;
-use hylo_idl::tokens::{HYLOSOL, HYUSD, JITOSOL, TokenMint, XSOL};
-use hylo_idl::{exchange, pda, router};
+use hylo_idl::tokens::{HYLOSOL, HYUSD, JITOSOL, SHYUSD, TokenMint, XSOL};
+use hylo_idl::{earn_pool, exchange, pda, router};
 use hylo_quotes::protocol_state::ProtocolAccounts;
 use solana_account::Account;
 use solana_instruction::Instruction;
@@ -29,6 +29,9 @@ pub const HYLO_ROUTER_PROGRAM_ID: Pubkey = router::ID_CONST;
 
 /// Hylo V2 exchange program id.
 pub const HYLO_EXCHANGE_PROGRAM_ID: Pubkey = exchange::ID_CONST;
+
+/// Hylo earn pool program id.
+pub const HYLO_EARN_POOL_PROGRAM_ID: Pubkey = earn_pool::ID_CONST;
 
 /// Hylo global state account.
 pub const HYLO_STATE_ID: Pubkey = pda::HYLO;
@@ -59,6 +62,10 @@ pub enum HyloOp {
   ConvertLeverToStable,
   /// LST -> LST (`swap_lst_to_lst`)
   SwapLstToLst,
+  /// hyUSD -> sHYUSD (earn pool `user_deposit`)
+  EarnPoolDeposit,
+  /// sHYUSD -> hyUSD (earn pool `user_withdraw`)
+  EarnPoolWithdraw,
 }
 
 fn is_lst(mint: &Pubkey) -> bool {
@@ -85,6 +92,10 @@ pub fn hylo_op(input_mint: &Pubkey, output_mint: &Pubkey) -> Option<HyloOp> {
     && input_mint != output_mint
   {
     Some(HyloOp::SwapLstToLst)
+  } else if *input_mint == HYUSD::MINT && *output_mint == SHYUSD::MINT {
+    Some(HyloOp::EarnPoolDeposit)
+  } else if *input_mint == SHYUSD::MINT && *output_mint == HYUSD::MINT {
+    Some(HyloOp::EarnPoolWithdraw)
   } else {
     None
   }
@@ -135,8 +146,8 @@ fn boxed_err<E: Into<Box<dyn Error>>>(err: E) -> TradingVenueError {
 pub struct HyloVenue {
   /// Address of Hylo's global state account (`pda::HYLO`).
   pub pool_id: Pubkey,
-  /// Token metadata for `[jitoSOL, hyloSOL, hyUSD, xSOL]`, populated in
-  /// `update_state`.
+  /// Token metadata for `[jitoSOL, hyloSOL, hyUSD, xSOL, sHYUSD]`, populated
+  /// in `update_state`.
   token_info: Vec<TokenInfo>,
   /// Accounts that must be fetched to refresh quoting state.
   required_state_pubkeys: HashSet<Pubkey>,
@@ -181,8 +192,26 @@ impl TradingVenue for HyloVenue {
     vec![
       self.program_id(),
       HYLO_EXCHANGE_PROGRAM_ID,
+      HYLO_EARN_POOL_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
     ]
+  }
+
+  fn directions_num(&self) -> Vec<(u8, u8)> {
+    let mints: Vec<Pubkey> =
+      self.token_info.iter().map(|info| info.pubkey).collect();
+    mints
+      .iter()
+      .enumerate()
+      .flat_map(|(from, input_mint)| {
+        mints
+          .iter()
+          .enumerate()
+          .filter_map(move |(to, output_mint)| {
+            hylo_op(input_mint, output_mint).map(|_| (from as u8, to as u8))
+          })
+      })
+      .collect()
   }
 
   fn market_id(&self) -> Pubkey {
@@ -229,6 +258,7 @@ impl TradingVenue for HyloVenue {
       TokenInfo::new(&HYLOSOL::MINT, hylosol_mint_account, u64::MAX)?,
       TokenInfo::new(&HYUSD::MINT, &protocol_accounts.hyusd_mint, u64::MAX)?,
       TokenInfo::new(&XSOL::MINT, &protocol_accounts.xsol_mint, u64::MAX)?,
+      TokenInfo::new(&SHYUSD::MINT, &protocol_accounts.shyusd_mint, u64::MAX)?,
     ];
     self.state = Some(HyloQuoteState::build(&protocol_accounts)?);
     self.initialized = true;

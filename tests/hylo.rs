@@ -3,7 +3,8 @@ mod common;
 use common::SuiteConfig;
 use solana_pubkey::Pubkey;
 use titan_integration_template::hylo::{
-  HYLO_EXCHANGE_PROGRAM_ID, HYLO_ROUTER_PROGRAM_ID, HYLO_STATE_ID, HyloVenue,
+  HYLO_EARN_POOL_PROGRAM_ID, HYLO_EXCHANGE_PROGRAM_ID, HYLO_ROUTER_PROGRAM_ID,
+  HYLO_STATE_ID, HyloVenue,
 };
 
 // Installs the allocation guard that powers the construction test's
@@ -19,7 +20,11 @@ fn pool() -> Pubkey {
 }
 
 fn programs() -> Vec<Pubkey> {
-  vec![HYLO_ROUTER_PROGRAM_ID, HYLO_EXCHANGE_PROGRAM_ID]
+  vec![
+    HYLO_ROUTER_PROGRAM_ID,
+    HYLO_EXCHANGE_PROGRAM_ID,
+    HYLO_EARN_POOL_PROGRAM_ID,
+  ]
 }
 
 fn config() -> SuiteConfig {

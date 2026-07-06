@@ -1,3 +1,4 @@
+use hylo_idl::earn_pool::account_builders as earn_pool_builders;
 use hylo_idl::exchange::account_builders;
 use hylo_idl::router::client::args::Route;
 use hylo_idl::router::instruction_builders::route;
@@ -52,5 +53,11 @@ pub fn swap_instruction(
         request.output_mint,
       ),
     ),
+    HyloOp::EarnPoolDeposit => {
+      route(&route_args, &earn_pool_builders::deposit(user))
+    }
+    HyloOp::EarnPoolWithdraw => {
+      route(&route_args, &earn_pool_builders::withdraw(user))
+    }
   }
 }

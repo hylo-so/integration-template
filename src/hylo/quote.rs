@@ -1,7 +1,7 @@
 use anchor_lang::prelude::Clock;
 use anyhow::Result as AnyhowResult;
 use fix::prelude::UFix64;
-use hylo_idl::tokens::{HYLOSOL, HYUSD, JITOSOL, TokenMint, XSOL};
+use hylo_idl::tokens::{HYLOSOL, HYUSD, JITOSOL, SHYUSD, TokenMint, XSOL};
 use hylo_quotes::protocol_state::{ProtocolAccounts, ProtocolState};
 use hylo_quotes::token_operation::TokenOperationExt;
 use solana_pubkey::Pubkey;
@@ -87,6 +87,8 @@ impl HyloQuoteState {
       HyloOp::ConvertLeverToStable => out!(XSOL, HYUSD),
       HyloOp::SwapLstToLst if from_jito => out!(JITOSOL, HYLOSOL),
       HyloOp::SwapLstToLst => out!(HYLOSOL, JITOSOL),
+      HyloOp::EarnPoolDeposit => out!(HYUSD, SHYUSD),
+      HyloOp::EarnPoolWithdraw => out!(SHYUSD, HYUSD),
     };
     Ok(output)
   }
