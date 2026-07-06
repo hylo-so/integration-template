@@ -24,19 +24,16 @@ use crate::trading_venue::{
   FromAccount, QuoteRequest, QuoteResult, SwapType, TradingVenue,
 };
 
-/// Hylo router program id — the venue's CPI entrypoint, as in the Jupiter
-/// integration. Resolves to the live "shadow" V2 deployment with the default
-/// `shadow` feature, or to the canonical id without it.
+/// Hylo router program id.
 pub const HYLO_ROUTER_PROGRAM_ID: Pubkey = router::ID_CONST;
 
-/// Hylo V2 exchange program id — the program the router CPIs into.
+/// Hylo V2 exchange program id.
 pub const HYLO_EXCHANGE_PROGRAM_ID: Pubkey = exchange::ID_CONST;
 
-/// Hylo's global state account — this venue's pool/market id.
+/// Hylo global state account.
 pub const HYLO_STATE_ID: Pubkey = pda::HYLO;
 
-/// Anchor discriminator of the exchange's `register_lst` instruction, which is
-/// the moment a new LST becomes tradable collateral (new pairs on this venue).
+/// Anchor discriminator of the exchange's `register_lst` instruction.
 const REGISTER_LST_DISCRIMINATOR: [u8; 8] =
   [167, 114, 254, 24, 190, 221, 82, 107];
 
@@ -45,11 +42,7 @@ const REGISTER_LST_HYLO_INDEX: usize = 1;
 /// Index of the newly registered LST mint in `register_lst`.
 const REGISTER_LST_MINT_INDEX: usize = 8;
 
-/// The Hylo exchange operation behind a (input mint, output mint) direction.
-///
-/// Off-chain only: selects the `TokenOperation` for quoting and the account
-/// context for the routed instruction. On-chain, Hylo's router resolves the
-/// same mapping from the mint pair itself.
+/// The Hylo exchange operation behind a swap direction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HyloOp {
   /// LST -> hyUSD (`mint_stablecoin_lst`)
@@ -97,12 +90,8 @@ pub fn hylo_op(input_mint: &Pubkey, output_mint: &Pubkey) -> Option<HyloOp> {
   }
 }
 
-/// Detect Hylo "pool creations".
-///
-/// Hylo has one global market (the `hylo` state account); what creates new
-/// tradable pairs is `register_lst`, which registers a new LST as collateral.
-/// Each registration is reported as a creation of the global market with the
-/// new LST plus the two protocol tokens it becomes tradable against.
+/// Detects `register_lst` instructions, which make a new LST tradable
+/// against hyUSD and xSOL.
 pub fn parse_pool_creations(
   instructions: &[ParsedInstruction],
 ) -> Vec<PoolCreation> {
@@ -126,14 +115,12 @@ pub fn parse_pool_creations(
     .collect()
 }
 
-/// Accounts fetched on top of [`ProtocolAccounts::pubkeys`]: the LST mints,
-/// for token metadata.
+/// Accounts needed beyond [`ProtocolAccounts::pubkeys`].
 fn extra_keys() -> [Pubkey; 2] {
   [JITOSOL::MINT, HYLOSOL::MINT]
 }
 
-/// Every account needed to rebuild quoting state, in fetch order: the SDK's
-/// protocol account list followed by [`extra_keys`].
+/// Every account needed to rebuild quoting state, in fetch order.
 fn update_keys() -> Vec<Pubkey> {
   let mut keys = ProtocolAccounts::pubkeys();
   keys.extend(extra_keys());
@@ -155,7 +142,7 @@ pub struct HyloVenue {
   required_state_pubkeys: HashSet<Pubkey>,
   /// Set to `true` once all required state has been loaded.
   initialized: bool,
-  /// Quote state snapshot; shares the on-chain math via the Hylo SDK.
+  /// Quote state snapshot.
   state: Option<HyloQuoteState>,
 }
 
@@ -164,7 +151,6 @@ impl FromAccount for HyloVenue {
     pubkey: &Pubkey,
     account: &Account,
   ) -> Result<Self, TradingVenueError> {
-    // Defensive parse: reject anything that is not the Hylo state account.
     let is_hylo_state = *pubkey == pda::HYLO
       && Hylo::try_deserialize(&mut account.data.as_slice()).is_ok();
     if is_hylo_state {
@@ -224,9 +210,6 @@ impl TradingVenue for HyloVenue {
     let keys = update_keys();
     let accounts = cache.get_accounts(&keys).await?;
 
-    // SDK accounts -> full protocol state (deserialization, oracle
-    // validation, exchange contexts) exactly as the SDK's own
-    // `RpcStateProvider::fetch_state` does.
     let sdk_count = ProtocolAccounts::expected_count();
     let protocol_accounts =
       ProtocolAccounts::try_from((&keys[..sdk_count], &accounts[..sdk_count]))
@@ -240,8 +223,7 @@ impl TradingVenue for HyloVenue {
     let jitosol_mint_account = get(sdk_count)?;
     let hylosol_mint_account = get(sdk_count + 1)?;
 
-    // Token metadata: [jitoSOL, hyloSOL, hyUSD, xSOL]. All are classic SPL
-    // Token mints; the epoch only matters for Token-2022 transfer fees.
+    // The epoch argument only matters for Token-2022 transfer fees.
     self.token_info = vec![
       TokenInfo::new(&JITOSOL::MINT, jitosol_mint_account, u64::MAX)?,
       TokenInfo::new(&HYLOSOL::MINT, hylosol_mint_account, u64::MAX)?,

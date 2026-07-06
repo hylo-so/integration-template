@@ -8,8 +8,7 @@ pub const MAX_MINTS: usize = 12;
 )]
 pub enum Venue {
   RaydiumAmm,
-  /// Hylo V2, executed through Hylo's on-chain router: the mint pair is all
-  /// the router needs to resolve the exchange instruction.
+  /// Hylo V2, via Hylo's on-chain router.
   Hylo {
     token_a: Pubkey,
     token_b: Pubkey,

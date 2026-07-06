@@ -7,9 +7,7 @@ use solana_pubkey::Pubkey;
 use super::HyloOp;
 use crate::trading_venue::QuoteRequest;
 
-/// Builds the `hylo-router` `route` instruction wrapping the exchange
-/// account context for this direction — the same shape the Jupiter
-/// integration submits.
+/// Builds the `hylo-router` `route` instruction for a swap direction.
 pub fn swap_instruction(
   op: HyloOp,
   request: &QuoteRequest,

@@ -55,9 +55,7 @@ impl HyloQuoteState {
     }
   }
 
-  /// Raw-atom output for `amount` atoms of `input_mint`, by dispatching the
-  /// runtime mint pair onto the SDK's statically typed
-  /// [`hylo_quotes::token_operation::TokenOperation`] impls.
+  /// Raw-atom output for `amount` atoms of `input_mint`.
   fn out(
     &self,
     op: HyloOp,
@@ -65,7 +63,6 @@ impl HyloQuoteState {
     output_mint: &Pubkey,
     amount: u64,
   ) -> AnyhowResult<u64> {
-    /// One typed SDK quote for the `IN -> OUT` pair.
     macro_rules! out {
       ($in:ty, $out:ty) => {
         self
