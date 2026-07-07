@@ -1647,7 +1647,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2154,7 +2154,7 @@ dependencies = [
 [[package]]
 name = "hylo-clients"
 version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#e20b577eee4d00eeb33a4357571285274d5d596f"
+source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2181,7 +2181,7 @@ dependencies = [
 [[package]]
 name = "hylo-core"
 version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#e20b577eee4d00eeb33a4357571285274d5d596f"
+source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2212,7 +2212,7 @@ dependencies = [
 [[package]]
 name = "hylo-idl"
 version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#e20b577eee4d00eeb33a4357571285274d5d596f"
+source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2242,7 +2242,7 @@ dependencies = [
 [[package]]
 name = "hylo-quotes"
 version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#e20b577eee4d00eeb33a4357571285274d5d596f"
+source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -3464,7 +3464,7 @@ dependencies = [
  "once_cell",
  "socket2 0.6.4",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3907,7 +3907,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7739,7 +7739,6 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.8.12",
  "anchor-lang",
- "anyhow",
  "assert_no_alloc",
  "async-trait",
  "bincode",
@@ -8293,7 +8292,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -2167,7 +2167,7 @@ dependencies = [
 [[package]]
 name = "hylo-clients"
 version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#e20b577eee4d00eeb33a4357571285274d5d596f"
+source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2194,7 +2194,7 @@ dependencies = [
 [[package]]
 name = "hylo-core"
 version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#e20b577eee4d00eeb33a4357571285274d5d596f"
+source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2225,7 +2225,7 @@ dependencies = [
 [[package]]
 name = "hylo-idl"
 version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#e20b577eee4d00eeb33a4357571285274d5d596f"
+source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2255,7 +2255,7 @@ dependencies = [
 [[package]]
 name = "hylo-quotes"
 version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#e20b577eee4d00eeb33a4357571285274d5d596f"
+source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2326,7 +2326,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "tokio",
  "tower-service",
  "tracing",
@@ -3435,7 +3435,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls 0.23.41",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -3475,7 +3475,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "tracing",
  "windows-sys 0.61.2",
 ]

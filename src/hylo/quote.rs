@@ -1,5 +1,4 @@
 use anchor_lang::prelude::Clock;
-use anyhow::{Result as AnyhowResult, anyhow};
 use fix::prelude::UFix64;
 use hylo_idl::tokens::{
   CBBTC, HYLOSOL, HYUSD, JITOSOL, SHYUSD, TokenMint, USDC, XBTC, XSOL,
@@ -47,7 +46,7 @@ impl HyloQuoteState {
     };
     let f = |x: u64| self.out(input_mint, output_mint, x);
     match (f(x0), f(x1)) {
-      (Ok(y0), Ok(y1)) => {
+      (Some(y0), Some(y1)) => {
         let expected_output = if x0 == amount { y0 } else { y1 };
         let price = (y1.saturating_sub(y0)) as f64 / (x1 - x0) as f64;
         Some((expected_output, price))
@@ -56,19 +55,21 @@ impl HyloQuoteState {
     }
   }
 
-  /// Raw-atom output for `amount` atoms of `input_mint`. One arm per routable
-  /// pair, mirroring `hylo-router`'s `resolve_route`.
+  /// Raw-atom output for `amount` atoms of `input_mint`, or `None` when the
+  /// operation is blocked or oversized. One arm per routable pair, mirroring
+  /// `hylo-router`'s `resolve_route`.
   fn out(
     &self,
     input_mint: &Pubkey,
     output_mint: &Pubkey,
     amount: u64,
-  ) -> AnyhowResult<u64> {
+  ) -> Option<u64> {
     macro_rules! out {
       ($in:ty, $out:ty) => {
         self
           .state
-          .output::<$in, $out>(UFix64::new(amount))?
+          .output::<$in, $out>(UFix64::new(amount))
+          .ok()?
           .out_amount
           .bits
       };
@@ -102,8 +103,8 @@ impl HyloQuoteState {
       (HYUSD::MINT, USDC::MINT) => out!(HYUSD, USDC),
       (HYUSD::MINT, SHYUSD::MINT) => out!(HYUSD, SHYUSD),
       (SHYUSD::MINT, HYUSD::MINT) => out!(SHYUSD, HYUSD),
-      _ => Err(anyhow!("unsupported pair"))?,
+      _ => None?,
     };
-    Ok(output)
+    Some(output)
   }
 }
