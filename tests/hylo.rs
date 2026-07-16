@@ -1,11 +1,9 @@
 mod common;
 
 use common::SuiteConfig;
+use hylo_idl::{earn_pool, exchange, pda, router};
 use solana_pubkey::Pubkey;
-use titan_integration_template::hylo::{
-  HYLO_EARN_POOL_PROGRAM_ID, HYLO_EXCHANGE_PROGRAM_ID, HYLO_ROUTER_PROGRAM_ID,
-  HYLO_STATE_ID, HyloVenue,
-};
+use titan_integration_template::hylo::HyloVenue;
 
 // Installs the allocation guard that powers the construction test's
 // `assert_no_alloc` checks. The Makefile runs that test under `release-debug`
@@ -16,15 +14,11 @@ static A: assert_no_alloc::AllocDisabler = assert_no_alloc::AllocDisabler;
 
 /// Hylo's global state account (`pda::HYLO`) — the venue's market id.
 fn pool() -> Pubkey {
-  HYLO_STATE_ID
+  pda::HYLO
 }
 
 fn programs() -> Vec<Pubkey> {
-  vec![
-    HYLO_ROUTER_PROGRAM_ID,
-    HYLO_EXCHANGE_PROGRAM_ID,
-    HYLO_EARN_POOL_PROGRAM_ID,
-  ]
+  vec![router::ID_CONST, exchange::ID_CONST, earn_pool::ID_CONST]
 }
 
 fn config() -> SuiteConfig {

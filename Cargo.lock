@@ -2153,8 +2153,8 @@ dependencies = [
 
 [[package]]
 name = "hylo-clients"
-version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
+version = "2.1.0"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#c9f0f0ad41f1d63f02ab6dea1fafd919d30e2f55"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2166,6 +2166,7 @@ dependencies = [
  "hylo-core",
  "hylo-fix",
  "hylo-idl",
+ "hylo-squads-multisig",
  "itertools 0.14.0",
  "mpl-token-metadata",
  "pyth-solana-receiver-sdk",
@@ -2174,14 +2175,13 @@ dependencies = [
  "solana-rpc-client",
  "solana-rpc-client-api",
  "solana-transaction-status-client-types",
- "squads-multisig",
  "tokio",
 ]
 
 [[package]]
 name = "hylo-core"
-version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
+version = "2.1.0"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#c9f0f0ad41f1d63f02ab6dea1fafd919d30e2f55"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2195,9 +2195,9 @@ dependencies = [
 
 [[package]]
 name = "hylo-fix"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67ae5077c0e7e4b543247b0042770aeb14ee35a161b1f2b1ba2d92e209121577"
+checksum = "74185c5f481949e7b4363af2c8fd66da7d0467e779c24f542fd672f373b3bef9"
 dependencies = [
  "anchor-lang",
  "anyhow",
@@ -2211,8 +2211,8 @@ dependencies = [
 
 [[package]]
 name = "hylo-idl"
-version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
+version = "2.1.0"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#c9f0f0ad41f1d63f02ab6dea1fafd919d30e2f55"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2241,8 +2241,8 @@ dependencies = [
 
 [[package]]
 name = "hylo-quotes"
-version = "1.0.0"
-source = "git+https://github.com/hylo-so/sdk?branch=debt%2Fheap-allocations#6214ac3235f7430f53ad4fc735a4970c2232e10d"
+version = "2.1.0"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#c9f0f0ad41f1d63f02ab6dea1fafd919d30e2f55"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2258,6 +2258,34 @@ dependencies = [
  "serde",
  "solana-rpc-client",
  "tokio",
+]
+
+[[package]]
+name = "hylo-squads-multisig"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf258b0daf6154c0c82be141c92e41cdd4b50aa88db4e621beeca8913882665f"
+dependencies = [
+ "futures",
+ "hylo-squads-multisig-program",
+ "solana-message",
+ "solana-rpc-client",
+ "solana-rpc-client-api",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "hylo-squads-multisig-program"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c49b02c39db8ec0cd6bd0c98fe6b1826bf060ad41b5238f5dc3deae91fe0665c"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "solana-address-lookup-table-interface",
+ "solana-borsh",
+ "solana-program",
+ "solana-security-txt",
 ]
 
 [[package]]
@@ -2313,7 +2341,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "tokio",
  "tower-service",
  "tracing",
@@ -3422,7 +3450,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls 0.23.41",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -3462,7 +3490,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "tracing",
  "windows-sys 0.61.2",
 ]
@@ -7523,32 +7551,6 @@ dependencies = [
  "spl-discriminator",
  "spl-pod",
  "thiserror 2.0.18",
-]
-
-[[package]]
-name = "squads-multisig"
-version = "2.1.0"
-source = "git+https://github.com/hylo-so/v4?branch=main#a0324f524d9afd011ccfeea9293f0eddfc360be3"
-dependencies = [
- "futures",
- "solana-message",
- "solana-rpc-client",
- "solana-rpc-client-api",
- "squads-multisig-program",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "squads-multisig-program"
-version = "2.1.0"
-source = "git+https://github.com/hylo-so/v4?branch=main#a0324f524d9afd011ccfeea9293f0eddfc360be3"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "solana-address-lookup-table-interface",
- "solana-borsh",
- "solana-program",
- "solana-security-txt",
 ]
 
 [[package]]

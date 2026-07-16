@@ -2,12 +2,12 @@ use anchor_lang::ToAccountMetas;
 use hylo_idl::earn_pool::account_builders::{deposit, withdraw};
 use hylo_idl::exchange::account_builders::{
   convert_lever_to_stable_exo, convert_lever_to_stable_lst,
-  convert_stable_to_lever_exo, convert_stable_to_lever_lst,
-  mint_levercoin_exo, mint_levercoin_lst, mint_stablecoin_exo,
-  mint_stablecoin_lst, mint_stablecoin_usdc, redeem_levercoin_exo,
-  redeem_levercoin_lst, redeem_stablecoin_exo, redeem_stablecoin_lst,
-  redeem_stablecoin_usdc, swap_exo_to_usdc, swap_lst_to_lst, swap_lst_to_usdc,
-  swap_usdc_to_exo, swap_usdc_to_lst,
+  convert_stable_to_lever_exo, convert_stable_to_lever_lst, mint_levercoin_exo,
+  mint_levercoin_lst, mint_stablecoin_exo, mint_stablecoin_lst,
+  mint_stablecoin_usdc, redeem_levercoin_exo, redeem_levercoin_lst,
+  redeem_stablecoin_exo, redeem_stablecoin_lst, redeem_stablecoin_usdc,
+  swap_exo_to_usdc, swap_lst_to_lst, swap_lst_to_usdc, swap_usdc_to_exo,
+  swap_usdc_to_lst,
 };
 use hylo_idl::pda::BTC_USD_PYTH_FEED;
 use hylo_idl::router::client::args::Route;
@@ -54,12 +54,10 @@ pub fn swap_instruction(
       convert_lever_to_stable_lst(user).to_account_metas(None)
     }
     (JITOSOL::MINT, HYLOSOL::MINT) => {
-      swap_lst_to_lst(user, JITOSOL::MINT, HYLOSOL::MINT)
-        .to_account_metas(None)
+      swap_lst_to_lst(user, JITOSOL::MINT, HYLOSOL::MINT).to_account_metas(None)
     }
     (HYLOSOL::MINT, JITOSOL::MINT) => {
-      swap_lst_to_lst(user, HYLOSOL::MINT, JITOSOL::MINT)
-        .to_account_metas(None)
+      swap_lst_to_lst(user, HYLOSOL::MINT, JITOSOL::MINT).to_account_metas(None)
     }
     (CBBTC::MINT, HYUSD::MINT) => {
       mint_stablecoin_exo(user, CBBTC::MINT, BTC_USD_PYTH_FEED)

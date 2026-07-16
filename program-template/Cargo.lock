@@ -7761,7 +7761,6 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.8.12",
  "anchor-lang",
- "anyhow",
  "assert_no_alloc",
  "async-trait",
  "bincode",

@@ -32,7 +32,10 @@ fn programs_present() -> bool {
 
 /// The integration layers, with a check per layer.
 const LAYERS: [(&str, &str); 4] = [
-  ("Creation parser", "parse_pool_creations() + a fixture test"),
+  (
+    "Creation parser",
+    "static pool list (Hylo listings are admin-gated)",
+  ),
   (
     "Quote layer",
     "implements quote() returning output + a marginal price",
@@ -103,7 +106,7 @@ fn integration_scorecard() {
 
   let done = [
     hylo_venue.contains("fn parse_pool_creations")
-      && hylo_creation.contains("parses_hylo_lst_registration"),
+      && hylo_creation.contains("static_pool_list"),
     hylo_venue.contains("fn quote"),
     !hylo_cpi.is_empty() && state.contains("Hylo"),
     swap_route.contains("PoolProtocol::HyloExchange")
