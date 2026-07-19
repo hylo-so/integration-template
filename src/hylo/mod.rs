@@ -162,7 +162,21 @@ impl TradingVenue for HyloVenue {
   }
 
   fn directions_num(&self) -> Vec<(u8, u8)> {
-    vec![]
+    let index = |mint: &Pubkey| {
+      self
+        .token_info
+        .iter()
+        .position(|info| info.pubkey == *mint)
+        .and_then(|i| u8::try_from(i).ok())
+    };
+    PAIRS
+      .iter()
+      .filter_map(|[a, b]| {
+        let (a, b) = (index(a)?, index(b)?);
+        Some([(a, b), (b, a)])
+      })
+      .flatten()
+      .collect()
   }
 
   fn market_id(&self) -> Pubkey {
