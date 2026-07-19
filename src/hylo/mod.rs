@@ -1,6 +1,8 @@
 mod instructions;
 mod quotes;
 
+use self::quotes::RuntimeQuote;
+
 use anchor_lang::AccountDeserialize;
 use async_trait::async_trait;
 use hylo_idl::exchange::accounts::Hylo;
@@ -245,10 +247,10 @@ impl TradingVenue for HyloVenue {
         amount,
       );
       let (expected_output, not_enough_liquidity, price) = match quoted {
-        Some(output) if amount > 0 => {
-          (output, false, output as f64 / amount as f64)
-        }
-        Some(output) => (output, false, 0.0),
+        Some(RuntimeQuote {
+          out_amount,
+          marginal_rate,
+        }) => (out_amount, false, marginal_rate),
         None => (0, true, 0.0),
       };
       Ok(QuoteResult {
