@@ -2,6 +2,7 @@ mod error;
 mod instructions;
 mod quotes;
 
+use self::error::error_chain;
 use self::quotes::RuntimeQuote;
 
 use anchor_lang::AccountDeserialize;
@@ -216,7 +217,7 @@ impl TradingVenue for HyloRouter {
       .split_at_checked(ProtocolAccounts::PUBKEYS.len())
       .ok_or(TradingVenueError::FailedToFetchMultipleAccountData)?;
     let protocol_accounts = ProtocolAccounts::from_fetched(protocol)
-      .map_err(|e| TradingVenueError::SomethingWentWrong(e.into()))?;
+      .map_err(|e| TradingVenueError::NoAccountFound(error_chain(e)))?;
     let ExternalMints {
       jitosol,
       hylosol,
@@ -227,11 +228,11 @@ impl TradingVenue for HyloRouter {
     // Epoch information
     let Clock { epoch, .. } =
       bincode::deserialize(&protocol_accounts.clock.data)
-        .map_err(|e| TradingVenueError::SomethingWentWrong(e.into()))?;
+        .map_err(|e| TradingVenueError::DeserializationFailed(error_chain(e)))?;
 
     // Hylo state snapshot
     let protocol_state = ProtocolState::try_from(&protocol_accounts)
-      .map_err(|e| TradingVenueError::SomethingWentWrong(e.into()))?;
+      .map_err(|e| TradingVenueError::MissingState(error_chain(e)))?;
 
     // Update state
     self.protocol_state = Some(protocol_state);

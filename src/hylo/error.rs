@@ -1,5 +1,7 @@
 #![allow(clippy::wildcard_imports)]
 
+use std::fmt::Display;
+
 use hylo_core::error::CoreError;
 use hylo_core::error::CoreError::*;
 use hylo_idl::pda;
@@ -7,7 +9,12 @@ use hylo_idl::pda;
 use crate::trading_venue::error::{ErrorInfo, TradingVenueError};
 use crate::trading_venue::protocol::PoolProtocol;
 
-/// Size-bound failures: a smaller amount could still fill.
+/// Formats an error with its cause chain.
+pub fn error_chain(error: impl Display) -> ErrorInfo {
+  format!("{error:#}").into()
+}
+
+/// Swap size exceeds protocol liquidity or limits.
 pub fn exceeds_liquidity(error: CoreError) -> bool {
   matches!(
     error,
@@ -33,7 +40,7 @@ pub fn exceeds_liquidity(error: CoreError) -> bool {
   )
 }
 
-/// Pair or protocol switched off: unusable at any size.
+/// Pair or protocol disabled.
 fn pool_inactive(error: CoreError) -> bool {
   matches!(
     error,
@@ -47,7 +54,7 @@ fn pool_inactive(error: CoreError) -> bool {
   )
 }
 
-/// Crank or oracle staleness: unusable until state refreshes.
+/// Crank or oracle stale.
 fn state_stale(error: CoreError) -> bool {
   matches!(
     error,
@@ -65,7 +72,7 @@ fn state_stale(error: CoreError) -> bool {
   )
 }
 
-/// Numeric representation conversions.
+/// Numeric conversion failed.
 fn conversion_failed(error: CoreError) -> bool {
   matches!(
     error,
@@ -82,7 +89,7 @@ fn conversion_failed(error: CoreError) -> bool {
   )
 }
 
-/// Invalid protocol configuration.
+/// Invalid protocol config.
 fn config_invalid(error: CoreError) -> bool {
   matches!(
     error,
@@ -104,7 +111,7 @@ fn config_invalid(error: CoreError) -> bool {
   )
 }
 
-/// Checked arithmetic inside conversions, NAV, and fee math.
+/// Checked arithmetic failed.
 fn math_failed(error: CoreError) -> bool {
   matches!(
     error,
