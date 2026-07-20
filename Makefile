@@ -17,9 +17,9 @@
 #   export SOLANA_RPC_URL=https://...   &&   make build-program   &&   make dump-programs
 #   make test-venue
 
-HYLO_EXCHANGE := hyshEX5sNEYhnYPMm8MwMThhBRPuLN3rjoYDbC9esPQ
-HYLO_ROUTER := HyshRo2hkqXGcyCfKU22zhSBPMwokmAnEoxDGeVQz7d
-HYLO_EARN_POOL := HYShEAST5PHe5EFxUPYUgzXsmSo88VVdDqJE21jXBQ7N
+HYLO_EXCHANGE := HYEXCHtHkBagdStcJCp3xbbb9B7sdMdWXFNj6mdsG4hn
+HYLO_ROUTER := hyRouTRDAgn65xyyJ3L5c4k5SFmSdr3NxDV8Euzjy3f
+HYLO_EARN_POOL := HysTabVUfmQBFcmzu1ctRd1Y1fxd66RBpboy1bmtDSQQ
 PROGRAMS := $(HYLO_EXCHANGE) $(HYLO_ROUTER) $(HYLO_EARN_POOL)
 
 DUMP_URL := $(if $(SOLANA_RPC_URL),$(SOLANA_RPC_URL),m)

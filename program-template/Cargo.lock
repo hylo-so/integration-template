@@ -2173,7 +2173,7 @@ dependencies = [
 [[package]]
 name = "hylo-clients"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#b44454f14ff9a9b10c41517b5d616a02dda0a57b"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#be1fd59a453834055d87cd64be80fc85edf27e69"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2200,7 +2200,7 @@ dependencies = [
 [[package]]
 name = "hylo-core"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#b44454f14ff9a9b10c41517b5d616a02dda0a57b"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#be1fd59a453834055d87cd64be80fc85edf27e69"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2232,7 +2232,7 @@ dependencies = [
 [[package]]
 name = "hylo-idl"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#b44454f14ff9a9b10c41517b5d616a02dda0a57b"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#be1fd59a453834055d87cd64be80fc85edf27e69"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2262,7 +2262,7 @@ dependencies = [
 [[package]]
 name = "hylo-quotes"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#b44454f14ff9a9b10c41517b5d616a02dda0a57b"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#be1fd59a453834055d87cd64be80fc85edf27e69"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2361,7 +2361,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "tokio",
  "tower-service",
  "tracing",
@@ -3470,7 +3470,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls 0.23.41",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -3510,7 +3510,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "tracing",
  "windows-sys 0.61.2",
 ]

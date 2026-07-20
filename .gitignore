@@ -81,3 +81,4 @@ Desktop.ini
 !program-template/Cargo.lock
 !flake.lock
 .direnv/
+.git/

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["shadow"]
+default = []
 shadow = ["hylo-core/shadow", "hylo-idl/shadow", "hylo-quotes/shadow"]
 
 [dependencies]
