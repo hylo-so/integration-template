@@ -2160,7 +2160,7 @@ dependencies = [
 [[package]]
 name = "hylo-clients"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#be1fd59a453834055d87cd64be80fc85edf27e69"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#b8fe2fb16b92c550cbf781c59d4194e514c68961"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2187,7 +2187,7 @@ dependencies = [
 [[package]]
 name = "hylo-core"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#be1fd59a453834055d87cd64be80fc85edf27e69"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#b8fe2fb16b92c550cbf781c59d4194e514c68961"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2219,7 +2219,7 @@ dependencies = [
 [[package]]
 name = "hylo-idl"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#be1fd59a453834055d87cd64be80fc85edf27e69"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#b8fe2fb16b92c550cbf781c59d4194e514c68961"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2249,7 +2249,7 @@ dependencies = [
 [[package]]
 name = "hylo-quotes"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#be1fd59a453834055d87cd64be80fc85edf27e69"
+source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#b8fe2fb16b92c550cbf781c59d4194e514c68961"
 dependencies = [
  "anchor-client",
  "anchor-lang",

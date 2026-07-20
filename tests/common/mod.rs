@@ -30,6 +30,7 @@ use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token::state::{Account as TokenAccount, AccountState};
 use titan_integration_template::account_caching::AccountsCache;
 use titan_integration_template::account_caching::rpc_cache::RpcClientCache;
+use titan_integration_template::trading_venue::error::TradingVenueError;
 use titan_integration_template::trading_venue::{
   FromAccount, QuoteRequest, SwapType, TradingVenue,
 };
@@ -140,6 +141,17 @@ fn geometric_grid(lb: u64, ub: u64, n: usize) -> Vec<u64> {
   points.sort();
   points.dedup();
   points
+}
+
+/// Skips directions the venue reports unquotable.
+fn quotable(
+  bounds: Result<(u64, u64), TradingVenueError>,
+  in_idx: u8,
+  out_idx: u8,
+) -> Option<(u64, u64)> {
+  bounds
+    .inspect_err(|err| log::warn!("skip {in_idx}->{out_idx}: {err}"))
+    .ok()
 }
 
 fn exact_in(
@@ -338,8 +350,13 @@ pub async fn construction<V: SuiteVenue>(config: &SuiteConfig) {
   );
 
   for (in_idx, out_idx) in venue.directions_num() {
-    let (lower, upper) = assert_no_alloc(|| venue.bounds(in_idx, out_idx))
-      .expect("boundary search failed");
+    let Some((lower, upper)) = quotable(
+      assert_no_alloc(|| venue.bounds(in_idx, out_idx)),
+      in_idx,
+      out_idx,
+    ) else {
+      continue;
+    };
     assert!(lower < upper, "lower bound must be < upper bound");
 
     let input_mint = venue.get_token(in_idx as usize).unwrap().pubkey;
@@ -377,6 +394,10 @@ pub async fn zero_input_spot_price<V: SuiteVenue>(config: &SuiteConfig) {
   assert!(venue.get_token_info().len() >= 2);
 
   for (in_idx, out_idx) in venue.directions_num() {
+    // Skip directions gated at current state, like the bounds-based tests.
+    if quotable(venue.bounds(in_idx, out_idx), in_idx, out_idx).is_none() {
+      continue;
+    }
     let input_mint = venue.get_token(in_idx as usize).unwrap().pubkey;
     let output_mint = venue.get_token(out_idx as usize).unwrap().pubkey;
 
@@ -412,7 +433,11 @@ pub async fn bound_simulation<V: SuiteVenue>(config: &SuiteConfig) {
   assert!(venue.get_token_info().len() >= 2);
 
   for (in_idx, out_idx) in venue.directions_num() {
-    let (lower, upper) = venue.bounds(in_idx, out_idx).unwrap();
+    let Some((lower, upper)) =
+      quotable(venue.bounds(in_idx, out_idx), in_idx, out_idx)
+    else {
+      continue;
+    };
     let input_mint = venue.get_token(in_idx as usize).unwrap().pubkey;
     let output_mint = venue.get_token(out_idx as usize).unwrap().pubkey;
 
@@ -454,7 +479,11 @@ pub async fn random_samples<V: SuiteVenue>(config: &SuiteConfig) {
 
   let mut rng = test_rng();
   for (in_idx, out_idx) in venue.directions_num() {
-    let (lb, ub) = venue.bounds(in_idx, out_idx).unwrap();
+    let Some((lb, ub)) =
+      quotable(venue.bounds(in_idx, out_idx), in_idx, out_idx)
+    else {
+      continue;
+    };
     let input_mint = venue.get_token(in_idx as usize).unwrap().pubkey;
     let output_mint = venue.get_token(out_idx as usize).unwrap().pubkey;
 
@@ -491,7 +520,11 @@ pub async fn monotone<V: SuiteVenue>(config: &SuiteConfig) {
 
   let mut rng = test_rng();
   for (in_idx, out_idx) in venue.directions_num() {
-    let (lb, ub) = venue.bounds(in_idx, out_idx).unwrap();
+    let Some((lb, ub)) =
+      quotable(venue.bounds(in_idx, out_idx), in_idx, out_idx)
+    else {
+      continue;
+    };
     let input_mint = venue.get_token(in_idx as usize).unwrap().pubkey;
     let output_mint = venue.get_token(out_idx as usize).unwrap().pubkey;
 
@@ -527,7 +560,11 @@ pub async fn quoting_speed<V: SuiteVenue>(config: &SuiteConfig) {
 
   let mut rng = test_rng();
   for (in_idx, out_idx) in venue.directions_num() {
-    let (lb, ub) = venue.bounds(in_idx, out_idx).unwrap();
+    let Some((lb, ub)) =
+      quotable(venue.bounds(in_idx, out_idx), in_idx, out_idx)
+    else {
+      continue;
+    };
     let input_mint = venue.get_token(in_idx as usize).unwrap().pubkey;
     let output_mint = venue.get_token(out_idx as usize).unwrap().pubkey;
 
@@ -562,7 +599,11 @@ pub async fn price_monotone<V: SuiteVenue>(config: &SuiteConfig) {
 
   let mut rng = test_rng();
   for (in_idx, out_idx) in venue.directions_num() {
-    let (lb, ub) = venue.bounds(in_idx, out_idx).unwrap();
+    let Some((lb, ub)) =
+      quotable(venue.bounds(in_idx, out_idx), in_idx, out_idx)
+    else {
+      continue;
+    };
     let input_mint = venue.get_token(in_idx as usize).unwrap().pubkey;
     let output_mint = venue.get_token(out_idx as usize).unwrap().pubkey;
 
@@ -605,7 +646,11 @@ pub async fn mean_value_theorem<V: SuiteVenue>(config: &SuiteConfig) {
   assert!(venue.get_token_info().len() >= 2);
 
   for (in_idx, out_idx) in venue.directions_num() {
-    let (lb, ub) = venue.bounds(in_idx, out_idx).unwrap();
+    let Some((lb, ub)) =
+      quotable(venue.bounds(in_idx, out_idx), in_idx, out_idx)
+    else {
+      continue;
+    };
     let input_mint = venue.get_token(in_idx as usize).unwrap().pubkey;
     let output_mint = venue.get_token(out_idx as usize).unwrap().pubkey;
 

@@ -227,8 +227,9 @@ impl TradingVenue for HyloRouter {
 
     // Epoch information
     let Clock { epoch, .. } =
-      bincode::deserialize(&protocol_accounts.clock.data)
-        .map_err(|e| TradingVenueError::DeserializationFailed(error_chain(e)))?;
+      bincode::deserialize(&protocol_accounts.clock.data).map_err(|e| {
+        TradingVenueError::DeserializationFailed(error_chain(e))
+      })?;
 
     // Hylo state snapshot
     let protocol_state = ProtocolState::try_from(&protocol_accounts)

@@ -36,7 +36,6 @@ pub fn exceeds_liquidity(error: CoreError) -> bool {
       | LevercoinMarketCapExceeded
       | DepositLimitExceeded
       | WithdrawalLimitExceededForEpoch
-      | ZeroAmount
   )
 }
 
