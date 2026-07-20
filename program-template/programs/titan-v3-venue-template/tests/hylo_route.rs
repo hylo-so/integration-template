@@ -3,7 +3,7 @@ mod common;
 use common::{run_swap_route, RouteConfig};
 use hylo_idl::{earn_pool, exchange, pda, router};
 use solana_pubkey::Pubkey;
-use titan_integration_template::hylo::HyloVenue;
+use titan_integration_template::hylo::HyloRouter;
 
 /// Hylo's global state account (`pda::HYLO`) — the venue's market id.
 fn pool() -> Pubkey {
@@ -16,7 +16,7 @@ fn venue_programs() -> Vec<Pubkey> {
 
 #[tokio::test]
 async fn swap_route_both_directions() {
-  run_swap_route::<HyloVenue>(RouteConfig {
+  run_swap_route::<HyloRouter>(RouteConfig {
     pool: pool(),
     venue_programs: venue_programs(),
   })

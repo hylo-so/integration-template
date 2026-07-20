@@ -30,7 +30,7 @@ use solana_sdk::signer::Signer;
 use solana_sysvar::clock::{self, Clock};
 use solana_transaction::Transaction;
 use spl_associated_token_account::get_associated_token_address_with_program_id;
-use spl_token::state::{Account as TokenAccount, AccountState};
+use spl_token::state::{Account as TokenAccount, AccountState, Mint};
 use titan_integration_template::account_caching::rpc_cache::RpcClientCache;
 use titan_integration_template::account_caching::AccountsCache;
 use titan_integration_template::swap_route::{
@@ -419,6 +419,18 @@ fn simulated_output_amount(
     .amount
 }
 
+/// Circulating supply of `mint`, the hard ceiling for any input amount:
+/// no holder can swap more than exists on-chain.
+async fn mint_supply(cache: &dyn AccountsCache, mint: Pubkey) -> u64 {
+  cache
+    .get_accounts(&[mint])
+    .await
+    .ok()
+    .and_then(|accounts| accounts.into_iter().next().flatten())
+    .and_then(|account| Mint::unpack_from_slice(account.data()).ok())
+    .map_or(0, |mint| mint.supply)
+}
+
 fn sample_amounts(lower: u64, upper: u64) -> Vec<u64> {
   let low = lower.max(1);
   let high = upper.max(low);
@@ -502,9 +514,22 @@ pub async fn run_swap_route<V: RouteVenue>(config: RouteConfig) {
   initialize_titan_pda(&mut litesvm, &payer, titan_pda);
 
   for (input_index, output_index) in venue.directions_num() {
-    let (lower, upper) = venue.bounds(input_index, output_index).unwrap();
+    // State-dependent gates (rebalance curve domains, mode blocks) make some
+    // directions legitimately unquotable; the router skips them, so do we.
+    let Ok((lower, upper)) = venue.bounds(input_index, output_index) else {
+      log::warn!("direction {input_index}->{output_index} not quotable");
+      continue;
+    };
     let input_mint = venue.get_token(input_index as usize).unwrap().pubkey;
     let output_mint = venue.get_token(output_index as usize).unwrap().pubkey;
+    // Cap at circulating supply: bounds search can walk past what exists
+    // on-chain (e.g. redeeming more xSOL than was ever minted), and a paused
+    // pair with zero activity (xBTC) has nothing to sample at all.
+    let upper = upper.min(mint_supply(&cache, input_mint).await);
+    if upper < lower.max(1) {
+      log::warn!("direction {input_index}->{output_index} has no supply");
+      continue;
+    }
 
     for amount in sample_amounts(lower, upper) {
       let request = QuoteRequest {
