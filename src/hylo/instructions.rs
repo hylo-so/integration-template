@@ -20,9 +20,10 @@ use solana_instruction::Instruction;
 use solana_pubkey::Pubkey;
 
 use crate::trading_venue::QuoteRequest;
+use crate::trading_venue::error::TradingVenueError;
 
-/// Builds the `hylo-router` `route` instruction for a swap direction, or
-/// `None` for an unroutable pair. One arm per routable pair, mirroring
+/// Builds the `hylo-router` `route` instruction for a swap direction,
+/// erroring on an unroutable pair. One arm per routable pair, mirroring
 /// `hylo-router`'s `resolve_route`.
 #[allow(clippy::too_many_lines)]
 pub fn swap_instruction(
@@ -33,7 +34,7 @@ pub fn swap_instruction(
     ..
   }: &QuoteRequest,
   user: Pubkey,
-) -> Option<Instruction> {
+) -> Result<Instruction, TradingVenueError> {
   let accounts = match (input_mint, output_mint) {
     (lst @ (JITOSOL::MINT | HYLOSOL::MINT), HYUSD::MINT) => {
       mint_stablecoin_lst(user, lst).to_account_metas(None)
@@ -115,7 +116,7 @@ pub fn swap_instruction(
     }
     (HYUSD::MINT, SHYUSD::MINT) => deposit(user).to_account_metas(None),
     (SHYUSD::MINT, HYUSD::MINT) => withdraw(user).to_account_metas(None),
-    _ => None?,
+    _ => Err(TradingVenueError::InvalidMint(input_mint.into()))?,
   };
   let args = Route {
     token_a: input_mint,
@@ -123,5 +124,5 @@ pub fn swap_instruction(
     amount,
     slippage_config: None,
   };
-  Some(route(&args, &accounts))
+  Ok(route(&args, &accounts))
 }

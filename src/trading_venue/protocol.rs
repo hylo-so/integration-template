@@ -14,13 +14,13 @@ use std::fmt::Display;
 /// categorize the venue.
 ///
 /// Protocols included here:
-/// - `HyloExchange`: Hylo's V2 exchange (LST-collateralized hyUSD/xSOL).
+/// - `Hylo`: Hylo's V2 exchange (LST-collateralized hyUSD/xSOL).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PoolProtocol {
   /// Hylo's V2 exchange program: mint/redeem of the hyUSD stablecoin and
   /// xSOL levercoin against LST collateral (jitoSOL, hyloSOL), plus
   /// stable<->lever converts and LST<->LST swaps.
-  HyloExchange,
+  Hylo,
 }
 
 impl Display for PoolProtocol {
@@ -39,7 +39,7 @@ impl From<PoolProtocol> for String {
   /// exposes protocol metadata via API.
   fn from(protocol: PoolProtocol) -> Self {
     match protocol {
-      PoolProtocol::HyloExchange => "HyloExchange".to_string(),
+      PoolProtocol::Hylo => "Hylo".to_string(),
     }
   }
 }

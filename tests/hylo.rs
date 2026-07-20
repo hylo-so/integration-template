@@ -3,7 +3,7 @@ mod common;
 use common::SuiteConfig;
 use hylo_idl::{earn_pool, exchange, pda, router};
 use solana_pubkey::Pubkey;
-use titan_integration_template::hylo::HyloVenue;
+use titan_integration_template::hylo::HyloRouter;
 
 // Installs the allocation guard that powers the construction test's
 // `assert_no_alloc` checks. The Makefile runs that test under `release-debug`
@@ -30,40 +30,40 @@ fn config() -> SuiteConfig {
 
 #[tokio::test]
 async fn construction() {
-  common::construction::<HyloVenue>(&config()).await;
+  common::construction::<HyloRouter>(&config()).await;
 }
 
 #[tokio::test]
 async fn zero_input_spot_price() {
-  common::zero_input_spot_price::<HyloVenue>(&config()).await;
+  common::zero_input_spot_price::<HyloRouter>(&config()).await;
 }
 
 #[tokio::test]
 async fn bound_simulation() {
-  common::bound_simulation::<HyloVenue>(&config()).await;
+  common::bound_simulation::<HyloRouter>(&config()).await;
 }
 
 #[tokio::test]
 async fn random_samples() {
-  common::random_samples::<HyloVenue>(&config()).await;
+  common::random_samples::<HyloRouter>(&config()).await;
 }
 
 #[tokio::test]
 async fn monotone() {
-  common::monotone::<HyloVenue>(&config()).await;
+  common::monotone::<HyloRouter>(&config()).await;
 }
 
 #[tokio::test]
 async fn quoting_speed() {
-  common::quoting_speed::<HyloVenue>(&config()).await;
+  common::quoting_speed::<HyloRouter>(&config()).await;
 }
 
 #[tokio::test]
 async fn price_monotone() {
-  common::price_monotone::<HyloVenue>(&config()).await;
+  common::price_monotone::<HyloRouter>(&config()).await;
 }
 
 #[tokio::test]
 async fn mean_value_theorem() {
-  common::mean_value_theorem::<HyloVenue>(&config()).await;
+  common::mean_value_theorem::<HyloRouter>(&config()).await;
 }

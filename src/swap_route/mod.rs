@@ -92,7 +92,7 @@ pub fn protocol_to_venue(
   request: &QuoteRequest,
 ) -> Result<Venue, TradingVenueError> {
   match venue.protocol() {
-    PoolProtocol::HyloExchange => Ok(Venue::Hylo {
+    PoolProtocol::Hylo => Ok(Venue::Hylo {
       token_a: request.input_mint,
       token_b: request.output_mint,
     }),
@@ -290,7 +290,7 @@ mod tests {
   #[test]
   fn protocol_maps_to_venue() {
     let request = request();
-    let hylo = mock_venue(PoolProtocol::HyloExchange, vec![]);
+    let hylo = mock_venue(PoolProtocol::Hylo, vec![]);
     assert_eq!(
       protocol_to_venue(&hylo, &request).unwrap(),
       Venue::Hylo {
@@ -306,7 +306,7 @@ mod tests {
     let venue = MockVenue {
       titan_pda,
       other: Pubkey::new_from_array([8u8; 32]),
-      protocol: PoolProtocol::HyloExchange,
+      protocol: PoolProtocol::Hylo,
       token_info: vec![],
     };
 

@@ -109,7 +109,7 @@ fn integration_scorecard() {
       && hylo_creation.contains("static_pool_list"),
     hylo_venue.contains("fn quote"),
     !hylo_cpi.is_empty() && state.contains("Hylo"),
-    swap_route.contains("PoolProtocol::HyloExchange")
+    swap_route.contains("PoolProtocol::Hylo")
       && swap_route.contains("Venue::Hylo"),
   ];
 

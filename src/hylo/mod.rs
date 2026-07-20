@@ -1,3 +1,4 @@
+mod error;
 mod instructions;
 mod quotes;
 
@@ -63,7 +64,7 @@ pub fn parse_pool_creations(
   _instructions: &[ParsedInstruction],
 ) -> Vec<PoolCreation> {
   vec![PoolCreation {
-    protocol: PoolProtocol::HyloExchange,
+    protocol: PoolProtocol::Hylo,
     pool: pda::HYLO,
     mints: pair_mints(),
   }]
@@ -105,14 +106,14 @@ impl<'a> ExternalMints<'a> {
 }
 
 /// Hylo V2 exchange venue state.
-pub struct HyloVenue {
+pub struct HyloRouter {
   pub pool_id: Pubkey,
   pub protocol_state: Option<ProtocolState<Clock>>,
   pub token_info: Vec<TokenInfo>,
   pub initialized: bool,
 }
 
-impl HyloVenue {
+impl HyloRouter {
   /// Quoting state; `NotInitialized` before the first `update_state`.
   fn protocol_state(&self) -> Result<&ProtocolState<Clock>, TradingVenueError> {
     self
@@ -122,7 +123,7 @@ impl HyloVenue {
   }
 }
 
-impl FromAccount for HyloVenue {
+impl FromAccount for HyloRouter {
   fn from_account(
     pubkey: &Pubkey,
     account: &Account,
@@ -130,7 +131,7 @@ impl FromAccount for HyloVenue {
     let is_hylo_state = *pubkey == pda::HYLO
       && Hylo::try_deserialize(&mut account.data.as_slice()).is_ok();
     if is_hylo_state {
-      Ok(HyloVenue {
+      Ok(HyloRouter {
         pool_id: *pubkey,
         protocol_state: None,
         token_info: Vec::new(),
@@ -143,7 +144,7 @@ impl FromAccount for HyloVenue {
 }
 
 #[async_trait]
-impl TradingVenue for HyloVenue {
+impl TradingVenue for HyloRouter {
   fn initialized(&self) -> bool {
     self.initialized
   }
@@ -188,7 +189,7 @@ impl TradingVenue for HyloVenue {
   }
 
   fn protocol(&self) -> PoolProtocol {
-    PoolProtocol::HyloExchange
+    PoolProtocol::Hylo
   }
 
   fn get_required_pubkeys_for_update(
@@ -206,8 +207,11 @@ impl TradingVenue for HyloVenue {
     &mut self,
     cache: &dyn AccountsCache,
   ) -> Result<(), TradingVenueError> {
+    // Fetch accounts
     let keys = self.get_required_pubkeys_for_update()?;
     let accounts = cache.get_accounts(&keys).await?;
+
+    // Split and validate accounts
     let (protocol, external) = accounts
       .split_at_checked(ProtocolAccounts::PUBKEYS.len())
       .ok_or(TradingVenueError::FailedToFetchMultipleAccountData)?;
@@ -220,13 +224,16 @@ impl TradingVenue for HyloVenue {
       cbbtc,
     } = ExternalMints::from_fetched(external)?;
 
+    // Epoch information
     let Clock { epoch, .. } =
       bincode::deserialize(&protocol_accounts.clock.data)
         .map_err(|e| TradingVenueError::SomethingWentWrong(e.into()))?;
 
+    // Hylo state snapshot
     let protocol_state = ProtocolState::try_from(&protocol_accounts)
       .map_err(|e| TradingVenueError::SomethingWentWrong(e.into()))?;
 
+    // Update state
     self.protocol_state = Some(protocol_state);
     self.token_info = vec![
       TokenInfo::new(&JITOSOL::MINT, jitosol, epoch)?,
@@ -252,30 +259,36 @@ impl TradingVenue for HyloVenue {
     }: QuoteRequest,
   ) -> Result<QuoteResult, TradingVenueError> {
     if matches!(swap_type, SwapType::ExactOut) {
-      Err(TradingVenueError::ExactOutNotSupported)
-    } else {
-      let quoted = quotes::runtime_quote(
-        self.protocol_state()?,
-        input_mint,
-        output_mint,
-        amount,
-      );
-      let (expected_output, not_enough_liquidity, price) = match quoted {
-        Some(RuntimeQuote {
-          out_amount,
-          marginal_rate,
-        }) => (out_amount, false, marginal_rate),
-        None => (0, true, 0.0),
-      };
-      Ok(QuoteResult {
+      Err(TradingVenueError::ExactOutNotSupported)?;
+    }
+    let quote = quotes::runtime_quote(
+      self.protocol_state()?,
+      input_mint,
+      output_mint,
+      amount,
+    )?;
+    let result = match quote {
+      Some(RuntimeQuote {
+        expected_output,
+        price,
+      }) => QuoteResult {
         input_mint,
         output_mint,
         amount,
         expected_output,
-        not_enough_liquidity,
+        not_enough_liquidity: false,
         price,
-      })
-    }
+      },
+      None => QuoteResult {
+        input_mint,
+        output_mint,
+        amount,
+        expected_output: 0,
+        not_enough_liquidity: true,
+        price: 0.0,
+      },
+    };
+    Ok(result)
   }
 
   fn generate_swap_instruction(
@@ -284,6 +297,5 @@ impl TradingVenue for HyloVenue {
     user: Pubkey,
   ) -> Result<Instruction, TradingVenueError> {
     instructions::swap_instruction(&request, user)
-      .ok_or(TradingVenueError::InvalidMint(request.input_mint.into()))
   }
 }

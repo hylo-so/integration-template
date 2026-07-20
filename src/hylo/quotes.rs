@@ -7,33 +7,39 @@ use hylo_quotes::token_operation::TokenOperationExt;
 use solana_program::clock::Clock;
 use solana_pubkey::Pubkey;
 
+use super::error::exceeds_liquidity;
+use crate::trading_venue::error::TradingVenueError;
+
 /// Pair-erased [`TokenOperationExt::output`] result.
 pub struct RuntimeQuote {
-  pub out_amount: u64,
-  pub marginal_rate: f64,
+  pub expected_output: u64,
+  pub price: f64,
 }
 
 /// Typed [`TokenOperationExt::output`] for one pair.
 macro_rules! out {
-  ($state:expr, $amount:expr, $in:ty, $out:ty) => {{
-    let output = $state.output::<$in, $out>(UFix64::new($amount)).ok()?;
-    RuntimeQuote {
-      out_amount: output.out_amount.bits,
-      marginal_rate: output.marginal_rate,
+  ($state:expr, $amount:expr, $in:ty, $out:ty) => {
+    match $state.output::<$in, $out>(UFix64::new($amount)) {
+      Ok(output) => Ok(Some(RuntimeQuote {
+        expected_output: output.out_amount.bits,
+        price: output.marginal_rate,
+      })),
+      Err(err) if exceeds_liquidity(err) => Ok(None),
+      Err(err) => Err(err.into()),
     }
-  }};
+  };
 }
 
-/// Output amount and marginal rate for a swap, `None` if unroutable or
-/// blocked. Arms mirror `swap_instruction`.
+/// Output amount and marginal rate for a swap. `Ok(None)` when the size
+/// exceeds available liquidity. Arms mirror `swap_instruction`.
 #[allow(clippy::too_many_lines)]
 pub fn runtime_quote(
   state: &ProtocolState<Clock>,
   input_mint: Pubkey,
   output_mint: Pubkey,
   amount: u64,
-) -> Option<RuntimeQuote> {
-  let quote = match (input_mint, output_mint) {
+) -> Result<Option<RuntimeQuote>, TradingVenueError> {
+  match (input_mint, output_mint) {
     (JITOSOL::MINT, HYUSD::MINT) => out!(state, amount, JITOSOL, HYUSD),
     (HYLOSOL::MINT, HYUSD::MINT) => out!(state, amount, HYLOSOL, HYUSD),
     (JITOSOL::MINT, XSOL::MINT) => out!(state, amount, JITOSOL, XSOL),
@@ -62,7 +68,6 @@ pub fn runtime_quote(
     (HYUSD::MINT, USDC::MINT) => out!(state, amount, HYUSD, USDC),
     (HYUSD::MINT, SHYUSD::MINT) => out!(state, amount, HYUSD, SHYUSD),
     (SHYUSD::MINT, HYUSD::MINT) => out!(state, amount, SHYUSD, HYUSD),
-    _ => None?,
-  };
-  Some(quote)
+    _ => Err(TradingVenueError::InvalidMint(input_mint.into())),
+  }
 }

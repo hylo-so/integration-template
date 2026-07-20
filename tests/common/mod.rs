@@ -1,6 +1,6 @@
 //! Shared, venue-generic test suite.
 //!
-//! `tests/hylo.rs` runs these functions against `HyloVenue`.
+//! `tests/hylo.rs` runs these functions against `HyloRouter`.
 //!
 //! Every function gates on prerequisites and SKIPs (returns) when they're
 //! missing, so `cargo test` is clean on a fresh clone:

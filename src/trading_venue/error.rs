@@ -63,9 +63,9 @@ impl From<&'static str> for ErrorInfo {
 impl Display for ErrorInfo {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      ErrorInfo::Pubkey(pubkey) => write!(f, "{}", pubkey),
-      ErrorInfo::String(string) => write!(f, "{}", string),
-      ErrorInfo::StaticStr(string) => write!(f, "{}", string),
+      ErrorInfo::Pubkey(pubkey) => write!(f, "{pubkey}"),
+      ErrorInfo::String(string) => write!(f, "{string}"),
+      ErrorInfo::StaticStr(string) => write!(f, "{string}"),
     }
   }
 }
