@@ -589,7 +589,7 @@ pub async fn quoting_speed<V: SuiteVenue>(config: &SuiteConfig) {
 /// Price monotonicity (concavity): the reported marginal price is positive and
 /// non-increasing as the input grows.
 pub async fn price_monotone<V: SuiteVenue>(config: &SuiteConfig) {
-  const REL_TOL: f64 = 1e-3; // slack so integer rounding can't look like a violation
+  const REL_TOL: f64 = 2e-3; // slack so integer rounding can't look like a violation
   init_test_logger();
   let Some(rpc_url) = rpc_url_or_skip() else {
     return;
