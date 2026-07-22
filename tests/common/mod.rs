@@ -632,12 +632,54 @@ pub async fn price_monotone<V: SuiteVenue>(config: &SuiteConfig) {
   }
 }
 
-/// Mean value theorem: the realized chord of the output curve is bracketed by
-/// the reported endpoint prices, certifying the price is the genuine derivative
-/// of the quoted output.
-pub async fn mean_value_theorem<V: SuiteVenue>(config: &SuiteConfig) {
+/// Checks the chord on `[a, b]` lies between the endpoint prices, bisecting
+/// on failure to isolate fee-knot discontinuities in `f'`.
+fn assert_mean_value<V: SuiteVenue>(
+  venue: &V,
+  input_mint: Pubkey,
+  output_mint: Pubkey,
+  a: u64,
+  b: u64,
+  depth: u8,
+) {
   const REL_TOL: f64 = 1e-5; // 0.1 BPS
-  const OUT_QUANTUM: f64 = 2.0; // two output atoms of floor-truncation slack
+  const OUT_QUANTUM: f64 = 2.0; // output atoms of floor-truncation slack
+  const IN_QUANTUM: f64 = 2.0; // input atoms eaten by fee ceil-rounding
+  let quote = |x: u64| {
+    venue
+      .quote(exact_in(input_mint, output_mint, x))
+      .unwrap_or_else(|e| {
+        panic!("quote {input_mint}->{output_mint} at {x}: {e:?}")
+      })
+  };
+  let (qa, qb) = (quote(a), quote(b));
+  if qb.expected_output > qa.expected_output {
+    let chord =
+      (qb.expected_output - qa.expected_output) as f64 / (b - a) as f64;
+    let slack = OUT_QUANTUM + IN_QUANTUM * qa.price.max(qb.price);
+    let atol = slack / (b - a) as f64;
+    let lo = qa.price.min(qb.price) * (1.0 - REL_TOL) - atol;
+    let hi = qa.price.max(qb.price) * (1.0 + REL_TOL) + atol;
+    let mid = a + (b - a) / 2;
+    if (lo..=hi).contains(&chord) {
+      // Window certified.
+    } else if depth > 0 && mid > a && mid < b {
+      assert_mean_value(venue, input_mint, output_mint, a, mid, depth - 1);
+      assert_mean_value(venue, input_mint, output_mint, mid, b, depth - 1);
+    } else {
+      panic!(
+        "chord {chord} outside price bracket [{lo}, {hi}] on [{a}, {b}] \
+         {input_mint}->{output_mint}"
+      );
+    }
+  }
+}
+
+/// Mean value theorem: the realized chord of the output curve lies between
+/// the reported endpoint prices, certifying the price is the genuine
+/// derivative of the quoted output. Windows straddling a fee-curve knot
+/// (where `f'` jumps) are bisected until the knot sits at an endpoint.
+pub async fn mean_value_theorem<V: SuiteVenue>(config: &SuiteConfig) {
   init_test_logger();
   let Some(rpc_url) = rpc_url_or_skip() else {
     return;
@@ -657,37 +699,9 @@ pub async fn mean_value_theorem<V: SuiteVenue>(config: &SuiteConfig) {
     let grid = geometric_grid(lb, ub, 64);
     for pair in grid.windows(2) {
       let (a, b) = (pair[0], pair[1]);
-      if b <= a {
-        continue;
+      if b > a {
+        assert_mean_value(&venue, input_mint, output_mint, a, b, 40);
       }
-      let qa = venue
-        .quote(exact_in(input_mint, output_mint, a))
-        .expect("quote at a");
-      let qb = venue
-        .quote(exact_in(input_mint, output_mint, b))
-        .expect("quote at b");
-      if qb.expected_output <= qa.expected_output {
-        continue; // flat step carries no rate information
-      }
-
-      let chord =
-        (qb.expected_output - qa.expected_output) as f64 / (b - a) as f64;
-      let (price_a, price_b) = (qa.price, qb.price); // f'(a) >= f'(b)
-      let atol = OUT_QUANTUM / (b - a) as f64;
-
-      assert!(
-        price_b <= price_a * (1.0 + REL_TOL),
-        "price increased with size: f'({a})={price_a} < f'({b})={price_b}"
-      );
-      assert!(
-        chord <= price_a * (1.0 + REL_TOL) + atol,
-        "chord {chord} exceeds left price {price_a} (atol {atol}) on [{a}, \
-         {b}]"
-      );
-      assert!(
-        chord >= price_b * (1.0 - REL_TOL) - atol,
-        "chord {chord} below right price {price_b} (atol {atol}) on [{a}, {b}]"
-      );
     }
   }
 }
