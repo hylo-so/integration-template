@@ -181,6 +181,25 @@ impl TradingVenue for HyloRouter {
       .collect()
   }
 
+  /// Protocol-true bounds: the SDK computes the executable input range
+  /// from state; no boundary search.
+  fn bounds(
+    &self,
+    tkn_in_ind: u8,
+    tkn_out_ind: u8,
+  ) -> Result<(u64, u64), TradingVenueError> {
+    let input_mint = self.get_token(tkn_in_ind as usize)?.pubkey;
+    let output_mint = self.get_token(tkn_out_ind as usize)?.pubkey;
+    let state = self.protocol_state()?;
+    let lower = state
+      .runtime_min_input(input_mint, output_mint)
+      .map_err(|e| TradingVenueError::NoQuotableValue(error_chain(e)))?;
+    let upper = state
+      .runtime_max_input(input_mint, output_mint)
+      .map_err(|e| TradingVenueError::NoQuotableValue(error_chain(e)))?;
+    Ok((lower, upper))
+  }
+
   fn market_id(&self) -> Pubkey {
     self.pool_id
   }
