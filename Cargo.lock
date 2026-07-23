@@ -2160,7 +2160,8 @@ dependencies = [
 [[package]]
 name = "hylo-clients"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#4af40ce79028ee0592c0f13118f7b902eb6bc8b5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e39998713a301e5bd1515b4dced7487f6c102360a6a2b00f7c6d74a58f11d7f"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2187,7 +2188,8 @@ dependencies = [
 [[package]]
 name = "hylo-core"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#4af40ce79028ee0592c0f13118f7b902eb6bc8b5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35dbdc00b5435a315cd507e1c596693378cf548f005e8101d1827a08d56ba72a"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2219,7 +2221,8 @@ dependencies = [
 [[package]]
 name = "hylo-idl"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#4af40ce79028ee0592c0f13118f7b902eb6bc8b5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6c59e18b707706dd5ef8e1c260a51b1fe1b61cffe4ce9aa0d19f1b76134903c"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2249,7 +2252,8 @@ dependencies = [
 [[package]]
 name = "hylo-quotes"
 version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#4af40ce79028ee0592c0f13118f7b902eb6bc8b5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24d1f778ed42d0e47a7e174e6fa2a51e808c81835773849f1d32f47d12629d6c"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2348,7 +2352,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "tokio",
  "tower-service",
  "tracing",
@@ -3457,7 +3461,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls 0.23.41",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -3497,7 +3501,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "tracing",
  "windows-sys 0.61.2",
 ]

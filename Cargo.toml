@@ -40,10 +40,10 @@ litesvm =  { version = "^0.7.1"}
 rand = "0.9.2"
 assert_no_alloc = { version = "1.1.2", default-features = false }
 anchor-lang = "0.32.1"
-hylo-fix = "0.7.0"
-hylo-core = { git = "https://github.com/hylo-so/sdk", branch = "feat/titan-v2", features = ["offchain"] }
-hylo-idl = { git = "https://github.com/hylo-so/sdk", branch = "feat/titan-v2" }
-hylo-quotes = { git = "https://github.com/hylo-so/sdk", branch = "feat/titan-v2" }
+hylo-fix = "0.7.2"
+hylo-core = { version = "2.1.0", features = ["offchain"] }
+hylo-idl = "2.1.0"
+hylo-quotes = "2.1.0"
 
 # Used only for the construction allocation check. Normal tests, including
 # `quoting_speed`, run under true `--release`.
