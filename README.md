@@ -1,3 +1,54 @@
+# Titan Integration — Hylo V2
+
+Hylo's V2 integration for Titan's routing layer, built on Titan's AMM
+integration template.
+
+## Hylo V2 venue
+
+Hylo is an LST-collateralized exchange, not a pool AMM: it mints/redeems the
+hyUSD stablecoin and the xSOL levercoin against LST collateral, converts
+between them, and swaps LST<->LST through its vaults. One venue
+(`src/hylo/`, `HyloVenue`) covers all 12 directions over
+`[jitoSOL, hyloSOL, hyUSD, xSOL]`; the market account is Hylo's global state
+(`pda::HYLO`).
+
+Both halves go through Hylo's standard interfaces, exactly like the Jupiter
+integration: quotes load `ProtocolState` from `hylo-quotes` (the same
+`hylo-core` math the on-chain program executes), and every swap leg is one
+`hylo-router` `route` instruction — the router resolves the exchange
+instruction from the mint pair on-chain.
+
+Layers:
+
+- Quote: `src/hylo/` (`HyloVenue`, `HyloOp`, `parse_pool_creations` —
+  a "pool creation" is `register_lst`)
+- Route builder: `Venue::Hylo { token_a, token_b }` in
+  `src/swap_route/mod.rs`
+- Program: `program-template/.../instructions/venues/hylo_router.rs`
+- Tests: `tests/hylo.rs`, `tests/hylo_creation.rs`,
+  `program-template/.../tests/hylo_route.rs`
+
+### Deployment: the `shadow` feature
+
+Hylo V2 currently runs as the mainnet **shadow** deployment
+(`hyshEX5sNEYhnYPMm8MwMThhBRPuLN3rjoYDbC9esPQ`); the canonical id
+(`HYEXCHtHkBagdStcJCp3xbbb9B7sdMdWXFNj6mdsG4hn`) still serves V1. The
+`shadow` cargo feature — **on by default** in both crates — points every
+program id and PDA at the live V2 deployment. When V2 is promoted to the
+canonical id, drop `shadow` from the `default` feature lists in `Cargo.toml`
+and `program-template/programs/titan-v3-venue-template/Cargo.toml` and update
+`HYLO_EXCHANGE` / `HYLO_ROUTER` in the `Makefile`.
+
+### Known caveats (shadow, as of 2026-07)
+
+The RPC-gated simulation tests require the shadow SOL/USD Pyth feed
+(`7AviUf9n...`) to be fresh within `oracle_interval_secs` (currently 10s on
+shadow) at snapshot time; when the shadow price crank lags, `update_state`
+fails with `PythOracleOutdated` and the suite reads red. Retry, or bump the
+shadow oracle interval.
+
+---
+
 # Titan AMM Integration Template
 
 A reference implementation and test suite for adding AMMs, CLMMs, and proprietary liquidity engines to Titan’s routing layer.
@@ -14,25 +65,19 @@ This repository provides:
 - A caching abstraction for efficient on-chain account loading
 - Simulation tests using LiteSVM ensuring off-chain quotes match on-chain execution
 - Pricing tests ensuring the reported marginal price is consistent with the quoted output
-- A fully worked Raydium example implementation
-
-This template is the starting point for integrating your AMM into Titan.
 
 ## On-Chain CPI Template
 
 This repo also includes `program-template/`, an Anchor template for the venue CPI
 adapter Titan's router program calls during routed swaps.
 
-Use it to verify your venue's on-chain swap instruction shape against Titan
+Use it to verify the venue's on-chain swap instruction shape against Titan
 router account layout and TitanPDA custody:
 
 ```bash
 cargo check --manifest-path program-template/Cargo.toml
 make build-program
 ```
-
-The program template includes a real Raydium AMM CPI example plus a minimal
-`venues/template.rs` file showing the common venue adapter shape.
 
 ## Core Components
 
@@ -50,9 +95,8 @@ The program template includes a real Raydium AMM CPI example plus a minimal
 
 ## Included Tests
 
-Every venue must pass the same shared suite in `tests/common/mod.rs`, run through
-`tests/example.rs` for the Raydium reference and `tests/your_venue.rs` for your
-integration.
+The venue must pass the shared suite in `tests/common/mod.rs`, run through
+`tests/hylo.rs`.
 
 - Construction and boundaries: deserialization, state loading, token info,
   boundary quotes, and no heap allocation inside `quote()`.
@@ -63,51 +107,18 @@ integration.
   average rate: `price(b) <= (f(b) - f(a)) / (b - a) <= price(a)`. The tests
   include atom-rounding slack for truncated integer outputs.
 
-## Implementing Your Own Venue
-
-Fill in the skeleton at **`src/your_venue/mod.rs`**, then wire the matching tests,
-route builder, and program template files below. `program-template/...` means
-`program-template/programs/titan-v3-venue-template`.
-
-| Layer | File | Function / item | Update required |
-| --- | --- | --- | --- |
-| Creation parser | `src/your_venue/mod.rs` | `YOUR_PROGRAM_ID` | Replace with your venue's on-chain program id. |
-| Creation parser | `src/your_venue/mod.rs` | `parse_pool_creations()` | Detect real pool-creation instructions and return `PoolCreation { protocol, pool, mints }`. |
-| Creation parser | `tests/your_venue_creation.rs` | constants + `your_venue_pool_creation()` | Add a no-RPC fixture for one real pool-creation instruction. |
-| Quote layer | `src/trading_venue/protocol.rs` | `PoolProtocol::YourPoolProtocol` | Rename or replace with your real protocol variant and display string. |
-| Quote layer | `src/your_venue/mod.rs` | `YourVenue` fields | Add the pool state your quote math needs. |
-| Quote layer | `src/your_venue/mod.rs` | `FromAccount::from_account()` | Deserialize the pool account and record state accounts to refresh. |
-| Quote layer | `src/your_venue/mod.rs` | `protocol()` | Return your real `PoolProtocol` variant. |
-| Quote layer | `src/your_venue/mod.rs` | `update_state()` | Fetch accounts through `AccountsCache`, deserialize live state, populate `token_info`, and initialize the venue. |
-| Quote layer | `src/your_venue/mod.rs` | `quote()` | Implement exact-in quote math, including raw-atom marginal price. |
-| Quote layer | `src/your_venue/mod.rs` | `generate_swap_instruction()` | Build your venue's swap instruction with the same per-leg `AccountMeta` shape the route builder will pass through. |
-| Quote layer | `tests/your_venue.rs` | `pool()` + `programs()` | Point the shared off-chain suite at a real pool and required program binaries. |
-| Route builder | `src/swap_route/mod.rs` | `Venue` enum | Add your route-builder venue variant in the same position and shape as the program template enum. |
-| Route builder | `src/swap_route/mod.rs` | `protocol_to_venue()` | Map your `PoolProtocol` to your route-builder `Venue`; include any CPI parameters the program template must pass to your adapter. |
-| Program layer | `program-template/.../src/state.rs` | `Venue` enum | Add the matching program-template venue variant, including any CPI parameters your adapter needs. |
-| Program layer | `program-template/.../src/instructions/venues/template.rs` | `swap(<venue fields>, amount_in, account_metas)` | Replace this template with your venue CPI adapter: set program id, discriminator, and exact-in serialization. If renamed, remove the old placeholder so the scorecard no longer sees the default id. |
-| Program layer | `program-template/.../src/instructions/venues/mod.rs` | `pub mod <venue>;` | Register your venue CPI adapter. |
-| Program layer | `program-template/.../src/instructions/swap_route_v3.rs` | `perform_cpi_swap()` | Dispatch your `Venue` variant to your venue CPI adapter. |
-| Program layer | `program-template/.../tests/venue_parity.rs` | parity cases | Add cases proving the route-builder and program-template venue enums serialize identically. |
-| Program layer | `program-template/.../tests/your_venue_route.rs` | `pool()` + `venue_programs()` | Point the route simulation at a real pool and CPI program dependencies. |
-
-If your swap CPI touches additional runtime programs, include them in
-`program_dependencies()` and in the test program lists above.
-
-### Running the tests
+## Running the tests
 
 ```bash
 make build-program   # build the Titan router program template
 make check-structure # fast no-RPC sanity checks
-make test-example   # the Raydium reference suite — always green
-make test-venue     # YOUR venue's suite (red until you implement YourVenue)
+make test-venue     # the Hylo venue suite
 make scorecard      # print the integration scorecard only
 make dump-programs  # fetch the program binaries the simulation tests load
 ```
 
-The example and your venue run the *same* shared suite, so both are held to the
-same bar. Everything runs cleanly on a fresh clone: the construction, simulation,
-and pricing tests need a mainnet RPC endpoint (and, for the simulations, dumped
+Everything runs cleanly on a fresh clone: the construction, simulation, and
+pricing tests need a mainnet RPC endpoint (and, for the simulations, dumped
 program binaries), so they **SKIP with an explanation** instead of failing when
 those prerequisites are absent. To run them for real:
 
@@ -115,20 +126,11 @@ those prerequisites are absent. To run them for real:
 export SOLANA_RPC_URL=https://...   # a mainnet RPC endpoint
 make build-program                  # rebuild the Titan router program template
 make dump-programs                  # one-time: dump the venue programs into programs/
-make test-example
 make test-venue
 ```
 
 `make check-structure` runs unit tests, scorecard assertions, and `Venue` enum
 parity checks without requiring RPC.
-
-`make scorecard` prints both scorecard sections: the *Example* section is your
-always-green baseline (all four layers wired), and the *Your venue* section
-tracks which placeholders you've replaced across the creation parser, quote,
-program, and route-builder layers.
-
-If your venue passes the suite, your quote() logic is sufficient to be assessed by
-our team and go through the next stages of integration.
 
 ## Tips for Integrators
 1. Always support zero-input quoting

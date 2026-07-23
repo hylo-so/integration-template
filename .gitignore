@@ -76,3 +76,9 @@ Desktop.ini
 
 # Local tooling
 .cache/
+
+!Cargo.lock
+!program-template/Cargo.lock
+!flake.lock
+.direnv/
+.git/

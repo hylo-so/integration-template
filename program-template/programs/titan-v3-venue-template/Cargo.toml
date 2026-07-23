@@ -20,17 +20,19 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
+shadow = ["hylo-idl/shadow"]
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 swap-logging = []
 
 [dependencies]
-anchor-lang = "0.31.1"
-anchor-spl = "0.31.1"
+anchor-lang = "0.32.1"
+anchor-spl = "0.32.1"
+hylo-idl = { git = "https://github.com/hylo-so/sdk", branch = "feat/titan-v2" }
 
 [dev-dependencies]
 borsh = "0.10.4"
 env_logger = "0.11.3"
-litesvm = "^0.6.1"
+litesvm = "^0.7.1"
 log = "0.4.28"
 solana-account = "2.2.1"
 solana-client = "2.2.1"
