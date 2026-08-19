@@ -10,6 +10,8 @@
 use std::fs;
 use std::path::PathBuf;
 
+use hylo_idl::{earn_pool, exchange, router};
+
 fn manifest() -> PathBuf {
   PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
@@ -20,14 +22,18 @@ fn read(rel: &str) -> String {
 }
 
 /// Whether the program binaries the simulation tests need are dumped.
+///
+/// Names come from the IDL constants rather than literals so the check
+/// follows the `shadow` feature, which swaps every program ID.
 fn programs_present() -> bool {
-  [
-    "hyshEX5sNEYhnYPMm8MwMThhBRPuLN3rjoYDbC9esPQ.so",
-    "HyshRo2hkqXGcyCfKU22zhSBPMwokmAnEoxDGeVQz7d.so",
-    "HYShEAST5PHe5EFxUPYUgzXsmSo88VVdDqJE21jXBQ7N.so",
-  ]
-  .iter()
-  .all(|p| manifest().join("programs").join(p).exists())
+  [exchange::ID_CONST, router::ID_CONST, earn_pool::ID_CONST]
+    .iter()
+    .all(|id| {
+      manifest()
+        .join("programs")
+        .join(format!("{id}.so"))
+        .exists()
+    })
 }
 
 /// The integration layers, with a check per layer.
