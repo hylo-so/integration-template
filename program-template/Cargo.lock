@@ -2172,8 +2172,9 @@ dependencies = [
 
 [[package]]
 name = "hylo-clients"
-version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#4c5044193b39589075f77794cf8b6f199c97b998"
+version = "2.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f04854faa1e38b2cfb12b5dc78cacbbfb0b92a5f43b34d7428113263592d1fa"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2184,7 +2185,7 @@ dependencies = [
  "bincode",
  "hylo-core",
  "hylo-fix",
- "hylo-idl",
+ "hylo-idl 2.3.6",
  "hylo-squads-multisig",
  "itertools 0.14.0",
  "mpl-token-metadata",
@@ -2199,13 +2200,15 @@ dependencies = [
 
 [[package]]
 name = "hylo-core"
-version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#4c5044193b39589075f77794cf8b6f199c97b998"
+version = "2.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3b92175860b41806fec8404ae6fc98b66e39de5652a69128db1b9b340180ddf"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "const-crypto",
  "hylo-fix",
- "hylo-idl",
+ "hylo-idl 2.3.6",
  "hylo-jupiter-amm-interface",
  "itertools 0.14.0",
  "pyth-solana-receiver-sdk",
@@ -2245,6 +2248,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "hylo-idl"
+version = "2.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e67bff7b3e3fc4142490bc2c4711a42eced663f10c93b91c83e3925ba17c5438"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "anyhow",
+ "const-crypto",
+ "hylo-fix",
+ "mpl-token-metadata",
+ "solana-address-lookup-table-interface",
+ "solana-loader-v3-interface 5.0.0",
+]
+
+[[package]]
 name = "hylo-jupiter-amm-interface"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2261,8 +2280,9 @@ dependencies = [
 
 [[package]]
 name = "hylo-quotes"
-version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#4c5044193b39589075f77794cf8b6f199c97b998"
+version = "2.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "566a776530ac9a3ef841f41e7f9aac20b5e81388a3e05717995dc08dc51e03e5"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2273,7 +2293,7 @@ dependencies = [
  "hylo-clients",
  "hylo-core",
  "hylo-fix",
- "hylo-idl",
+ "hylo-idl 2.3.6",
  "pyth-solana-receiver-sdk",
  "serde",
  "solana-rpc-client",
@@ -2361,7 +2381,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "tokio",
  "tower-service",
  "tracing",
@@ -3470,7 +3490,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls 0.23.41",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -3510,7 +3530,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "tracing",
  "windows-sys 0.61.2",
 ]
@@ -7778,7 +7798,7 @@ dependencies = [
  "env_logger 0.11.11",
  "hylo-core",
  "hylo-fix",
- "hylo-idl",
+ "hylo-idl 2.3.6",
  "hylo-quotes",
  "litesvm",
  "log",
@@ -7814,7 +7834,7 @@ dependencies = [
  "anchor-spl",
  "borsh 0.10.4",
  "env_logger 0.11.11",
- "hylo-idl",
+ "hylo-idl 2.1.0",
  "litesvm",
  "log",
  "solana-account",
