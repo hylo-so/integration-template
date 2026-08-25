@@ -2,9 +2,6 @@ mod error;
 mod instructions;
 mod quotes;
 
-use self::error::error_chain;
-use self::quotes::RuntimeQuote;
-
 use anchor_lang::AccountDeserialize;
 use async_trait::async_trait;
 use hylo_idl::exchange::accounts::Hylo;
@@ -20,6 +17,8 @@ use solana_instruction::Instruction;
 use solana_program::clock::Clock;
 use solana_pubkey::Pubkey;
 
+use self::error::error_chain;
+use self::quotes::RuntimeQuote;
 use crate::account_caching::AccountsCache;
 use crate::trading_venue::error::TradingVenueError;
 use crate::trading_venue::protocol::PoolProtocol;
