@@ -2159,8 +2159,8 @@ dependencies = [
 
 [[package]]
 name = "hylo-clients"
-version = "2.3.6"
-source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#8d39009922f17d66e46e887a975bbcde9695a355"
+version = "2.3.7"
+source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#f94cbe8c8031e26dfde6321b5d4fc28143ebecec"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2186,8 +2186,8 @@ dependencies = [
 
 [[package]]
 name = "hylo-core"
-version = "2.3.6"
-source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#8d39009922f17d66e46e887a975bbcde9695a355"
+version = "2.3.7"
+source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#f94cbe8c8031e26dfde6321b5d4fc28143ebecec"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2219,8 +2219,8 @@ dependencies = [
 
 [[package]]
 name = "hylo-idl"
-version = "2.3.6"
-source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#8d39009922f17d66e46e887a975bbcde9695a355"
+version = "2.3.7"
+source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#f94cbe8c8031e26dfde6321b5d4fc28143ebecec"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2249,8 +2249,8 @@ dependencies = [
 
 [[package]]
 name = "hylo-quotes"
-version = "2.3.6"
-source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#8d39009922f17d66e46e887a975bbcde9695a355"
+version = "2.3.7"
+source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#f94cbe8c8031e26dfde6321b5d4fc28143ebecec"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2349,7 +2349,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "tokio",
  "tower-service",
  "tracing",
@@ -3458,7 +3458,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls 0.23.41",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -3498,7 +3498,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "tracing",
  "windows-sys 0.61.2",
 ]

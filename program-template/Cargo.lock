@@ -2185,7 +2185,7 @@ dependencies = [
  "bincode",
  "hylo-core",
  "hylo-fix",
- "hylo-idl 2.3.6",
+ "hylo-idl 2.3.7",
  "hylo-squads-multisig",
  "itertools 0.14.0",
  "mpl-token-metadata",
@@ -2200,15 +2200,15 @@ dependencies = [
 
 [[package]]
 name = "hylo-core"
-version = "2.3.6"
+version = "2.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3b92175860b41806fec8404ae6fc98b66e39de5652a69128db1b9b340180ddf"
+checksum = "b0f05f1d89bd3815a2f83a00b15406e05c4cda961635dc5aad20365751ceb382"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
  "const-crypto",
  "hylo-fix",
- "hylo-idl 2.3.6",
+ "hylo-idl 2.3.7",
  "hylo-jupiter-amm-interface",
  "itertools 0.14.0",
  "pyth-solana-receiver-sdk",
@@ -2249,9 +2249,9 @@ dependencies = [
 
 [[package]]
 name = "hylo-idl"
-version = "2.3.6"
+version = "2.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e67bff7b3e3fc4142490bc2c4711a42eced663f10c93b91c83e3925ba17c5438"
+checksum = "86928c3d5d600ec0b51513e0c4d29ec00c07861923ab3ad5d4f3c53e8bcf9ad3"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2280,9 +2280,9 @@ dependencies = [
 
 [[package]]
 name = "hylo-quotes"
-version = "2.3.6"
+version = "2.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "566a776530ac9a3ef841f41e7f9aac20b5e81388a3e05717995dc08dc51e03e5"
+checksum = "3bf133c0a52b78c7278ec5606a32ad456e54a47112b152caacdf051fd9520655"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2293,7 +2293,7 @@ dependencies = [
  "hylo-clients",
  "hylo-core",
  "hylo-fix",
- "hylo-idl 2.3.6",
+ "hylo-idl 2.3.7",
  "pyth-solana-receiver-sdk",
  "serde",
  "solana-rpc-client",
@@ -7798,7 +7798,7 @@ dependencies = [
  "env_logger 0.11.11",
  "hylo-core",
  "hylo-fix",
- "hylo-idl 2.3.6",
+ "hylo-idl 2.3.7",
  "hylo-quotes",
  "litesvm",
  "log",
