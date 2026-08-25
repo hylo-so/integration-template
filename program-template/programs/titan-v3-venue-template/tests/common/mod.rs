@@ -14,6 +14,7 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::SystemTime;
 use std::{env, fs};
 
 use litesvm::LiteSVM;
@@ -73,6 +74,52 @@ fn workspace_path(path: impl AsRef<Path>) -> PathBuf {
   Path::new(env!("CARGO_MANIFEST_DIR"))
     .join("../..")
     .join(path)
+}
+
+fn newest_rust_source_mtime(dir: &Path) -> Result<SystemTime, String> {
+  let mut newest = SystemTime::UNIX_EPOCH;
+  for entry in fs::read_dir(dir)
+    .map_err(|e| format!("failed to read source dir {}: {e}", dir.display()))?
+  {
+    let entry =
+      entry.map_err(|e| format!("failed to read source entry: {e}"))?;
+    let path = entry.path();
+    let metadata = entry
+      .metadata()
+      .map_err(|e| format!("failed to stat {}: {e}", path.display()))?;
+
+    if metadata.is_dir() {
+      newest = newest.max(newest_rust_source_mtime(&path)?);
+    } else if path.extension().and_then(|ext| ext.to_str()) == Some("rs") {
+      newest = newest.max(metadata.modified().map_err(|e| {
+        format!("failed to read mtime for {}: {e}", path.display())
+      })?);
+    }
+  }
+  Ok(newest)
+}
+
+fn ensure_route_program_is_fresh(route_so: &Path) -> Result<(), String> {
+  let route_mtime = fs::metadata(route_so)
+    .and_then(|metadata| metadata.modified())
+    .map_err(|e| {
+      format!(
+        "failed to stat built route program {}: {e}",
+        route_so.display()
+      )
+    })?;
+  let src_dir = workspace_path("programs/titan-v3-venue-template/src");
+  let source_mtime = newest_rust_source_mtime(&src_dir)?;
+
+  if route_mtime < source_mtime {
+    return Err(format!(
+      "stale built route program {} — run `make build-program` from the repo \
+       root",
+      route_so.display()
+    ));
+  }
+
+  Ok(())
 }
 
 /// Dump `program` to `path` via the Solana CLI if it isn't already there.
@@ -419,6 +466,10 @@ pub async fn run_swap_route<V: RouteVenue>(config: RouteConfig) {
       current_test(),
       route_so.display()
     );
+    return;
+  }
+  if let Err(reason) = ensure_route_program_is_fresh(&route_so) {
+    eprintln!("SKIP {}: {reason}", current_test());
     return;
   }
 
