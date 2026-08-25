@@ -1,0 +1,86 @@
+name: "Titan Integration CI"
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest-large
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+    - uses: actions/checkout@v5
+    - uses: DeterminateSystems/nix-installer-action@main
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - run: nix run .#lint
+
+  build-and-test:
+    runs-on: ubuntu-latest-large
+    permissions:
+      id-token: "write"
+      contents: "read"
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/github-script@v9
+      with:
+        script: |
+          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL);
+          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN);
+    - uses: DeterminateSystems/nix-installer-action@main
+    - uses: DeterminateSystems/magic-nix-cache-action@v13
+    - uses: mozilla-actions/sccache-action@v0.0.10
+
+    - name: Require the RPC secret
+      run: |
+        if [ -z "${SOLANA_RPC_URL}" ]; then
+          echo "::error::secrets.SOLANA_RPC_URL is unset — every venue test would SKIP"
+          exit 1
+        fi
+
+    - run: nix run .#test-structure
+
+    # Produces program-template/target/deploy/titan_v3_venue_template.so, which
+    # hylo_route loads into LiteSVM. Its freshness check compares the binary's
+    # mtime against the newest program source, so this must run after checkout.
+    - run: nix run .#build-program
+
+    # `make test-venue` reports red/skipped in a table and always exits 0, so
+    # the phase logs are what decide this job.
+    - name: Venue suite
+      run: nix run .#test-venue 2>&1 | tee venue.txt
+
+    - name: Require every venue phase to have run
+      run: |
+        off=target/log-venue-off.txt
+        prog=target/log-venue-prog.txt
+        status=0
+        if grep -q 'SKIP' "$off" "$prog"; then
+          echo "::error::venue tests skipped — a prerequisite was missing"
+          status=1
+        fi
+        if grep -qE '^  [A-Za-z].{0,30}  (red|FAILED) ' venue.txt; then
+          echo "::error::venue suite failed"
+          status=1
+        fi
+        if [ "$status" -ne 0 ]; then
+          cat "$off" "$prog"
+        fi
+        exit "$status"
+
+    - name: Upload phase logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: venue-logs
+        path: |
+          venue.txt
+          target/log-*.txt
+        if-no-files-found: ignore
