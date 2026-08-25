@@ -2172,9 +2172,9 @@ dependencies = [
 
 [[package]]
 name = "hylo-clients"
-version = "2.3.6"
+version = "2.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f04854faa1e38b2cfb12b5dc78cacbbfb0b92a5f43b34d7428113263592d1fa"
+checksum = "9e99acc48db3e3acc55c892f6e258173b9d987c78001e5e19655520e9a1bdf7f"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2185,7 +2185,7 @@ dependencies = [
  "bincode",
  "hylo-core",
  "hylo-fix",
- "hylo-idl 2.3.7",
+ "hylo-idl",
  "hylo-squads-multisig",
  "itertools 0.14.0",
  "mpl-token-metadata",
@@ -2208,7 +2208,7 @@ dependencies = [
  "anchor-spl",
  "const-crypto",
  "hylo-fix",
- "hylo-idl 2.3.7",
+ "hylo-idl",
  "hylo-jupiter-amm-interface",
  "itertools 0.14.0",
  "pyth-solana-receiver-sdk",
@@ -2230,21 +2230,6 @@ dependencies = [
  "serde",
  "typed_floats",
  "typenum",
-]
-
-[[package]]
-name = "hylo-idl"
-version = "2.1.0"
-source = "git+https://github.com/hylo-so/sdk?branch=feat%2Ftitan-v2#4c5044193b39589075f77794cf8b6f199c97b998"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "anyhow",
- "const-crypto",
- "hylo-fix",
- "mpl-token-metadata",
- "solana-address-lookup-table-interface",
- "solana-loader-v3-interface 5.0.0",
 ]
 
 [[package]]
@@ -2293,7 +2278,7 @@ dependencies = [
  "hylo-clients",
  "hylo-core",
  "hylo-fix",
- "hylo-idl 2.3.7",
+ "hylo-idl",
  "pyth-solana-receiver-sdk",
  "serde",
  "solana-rpc-client",
@@ -3588,9 +3573,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44c5af06bb1b7d3216d91932aed5265164bf384dc89cd6ba05cf59a35f5f76ea"
+checksum = "b9ef1d0d795eb7d84685bca4f72f3649f064e6641543d3a8c415898726a57b41"
 dependencies = [
  "rand_chacha 0.9.0",
  "rand_core 0.9.5",
@@ -7798,11 +7783,11 @@ dependencies = [
  "env_logger 0.11.11",
  "hylo-core",
  "hylo-fix",
- "hylo-idl 2.3.7",
+ "hylo-idl",
  "hylo-quotes",
  "litesvm",
  "log",
- "rand 0.9.4",
+ "rand 0.9.5",
  "solana-account",
  "solana-account-info",
  "solana-client",
@@ -7834,7 +7819,7 @@ dependencies = [
  "anchor-spl",
  "borsh 0.10.4",
  "env_logger 0.11.11",
- "hylo-idl 2.1.0",
+ "hylo-idl",
  "litesvm",
  "log",
  "solana-account",
@@ -8238,9 +8223,9 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.23.4"
+version = "1.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf80a72845275afea99e7f2b434723d3bc7e38470fcd1c7ed39a599c73319a53"
+checksum = "f053576934f05a761a402421fbbe3d425d9366f75f978806a037b3ca481abecc"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
