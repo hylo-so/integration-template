@@ -12,7 +12,7 @@
 
 use std::env;
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use assert_no_alloc::assert_no_alloc;
 use litesvm::LiteSVM;
@@ -230,47 +230,6 @@ async fn build_venue<V: SuiteVenue>(
   (venue, cache)
 }
 
-/// A LiteSVM simulation rejected because a Pyth feed was already older than
-/// the program's staleness window when the snapshot was taken. The snapshot
-/// is internally consistent — quote and sim read the same accounts — so the
-/// only remedy is a fresh snapshot after the next oracle push.
-pub struct StaleOracle(String);
-
-/// Attempts per simulation test: each failed attempt rebuilds the venue,
-/// cache, and SVM from a fresh snapshot after a delay, giving the oracle
-/// pusher a chance to land a fresh price.
-const SIM_SNAPSHOT_ATTEMPTS: u32 = 4;
-const SIM_RETRY_DELAY: Duration = Duration::from_secs(5);
-
-/// Drives `attempt` to completion, resnapshotting on [`StaleOracle`] up to
-/// [`SIM_SNAPSHOT_ATTEMPTS`] times. Any other failure inside the attempt
-/// panics immediately — only oracle staleness earns a retry.
-async fn retry_stale_snapshots<F, Fut>(test: &str, mut attempt: F)
-where
-  F: FnMut() -> Fut,
-  Fut: Future<Output = Result<(), StaleOracle>>,
-{
-  let mut tries = 1;
-  loop {
-    match attempt().await {
-      Ok(()) => break,
-      Err(StaleOracle(logs)) if tries < SIM_SNAPSHOT_ATTEMPTS => {
-        log::warn!(
-          "{test}: stale oracle in simulation (attempt {tries}), \
-           resnapshotting in {SIM_RETRY_DELAY:?}"
-        );
-        log::debug!("{test}: {logs}");
-        tokio::time::sleep(SIM_RETRY_DELAY).await;
-        tries += 1;
-      }
-      Err(StaleOracle(logs)) => panic!(
-        "{test}: oracle still stale after {SIM_SNAPSHOT_ATTEMPTS} \
-         snapshots:\n{logs}"
-      ),
-    }
-  }
-}
-
 /// Execute a swap through the venue's generated instruction inside LiteSVM and
 /// return the realized output amount — the on-chain ground truth to compare a
 /// quote against.
@@ -280,7 +239,7 @@ async fn sim_quote_request(
   request: QuoteRequest,
   litesvm: &mut LiteSVM,
   keypair: &Keypair,
-) -> Result<u64, StaleOracle> {
+) -> u64 {
   let tokens = venue.get_token_info();
   let idx_0 = tokens
     .iter()
@@ -355,17 +314,7 @@ async fn sim_quote_request(
     &[keypair],
     blockhash,
   );
-  let result = match litesvm.simulate_transaction(tx) {
-    Ok(result) => result,
-    Err(failure) => {
-      let logs = failure.meta.logs.join("\n");
-      if logs.contains("PythOracleOutdated") {
-        Err(StaleOracle(logs))?
-      } else {
-        panic!("simulation failed: {failure:?}")
-      }
-    }
-  };
+  let result = litesvm.simulate_transaction(tx).unwrap();
 
   let post = result
     .post_accounts
@@ -373,11 +322,9 @@ async fn sim_quote_request(
     .find(|(pk, _)| pk == &token_account_b)
     .map(|(_, acc)| acc)
     .expect("output token account missing from simulation");
-  Ok(
-    TokenAccount::unpack_from_slice(post.data())
-      .expect("failed to unpack output token account")
-      .amount,
-  )
+  TokenAccount::unpack_from_slice(post.data())
+    .expect("failed to unpack output token account")
+    .amount
 }
 
 // ---------------------------------------------------------------------------
@@ -403,21 +350,13 @@ pub async fn construction<V: SuiteVenue>(config: &SuiteConfig) {
   );
 
   for (in_idx, out_idx) in venue.directions_num() {
-    // Quotability is decided unguarded: an unquotable direction formats
-    // its reason into the error, which allocates by design. Only the
-    // successful bounds path carries the no-alloc contract, so it is
-    // re-run under the guard once the direction is known quotable.
-    let Some((lower, upper)) =
-      quotable(venue.bounds(in_idx, out_idx), in_idx, out_idx)
-    else {
+    let Some((lower, upper)) = quotable(
+      assert_no_alloc(|| venue.bounds(in_idx, out_idx)),
+      in_idx,
+      out_idx,
+    ) else {
       continue;
     };
-    let guarded = assert_no_alloc(|| venue.bounds(in_idx, out_idx));
-    assert_eq!(
-      guarded.ok(),
-      Some((lower, upper)),
-      "bounds changed between unguarded and guarded evaluation"
-    );
     assert!(lower < upper, "lower bound must be < upper bound");
 
     let input_mint = venue.get_token(in_idx as usize).unwrap().pubkey;
@@ -487,16 +426,6 @@ pub async fn bound_simulation<V: SuiteVenue>(config: &SuiteConfig) {
   if !programs_ready(&config.programs) {
     return;
   }
-  retry_stale_snapshots("bound_simulation", || {
-    bound_simulation_attempt::<V>(rpc_url.clone(), config)
-  })
-  .await;
-}
-
-async fn bound_simulation_attempt<V: SuiteVenue>(
-  rpc_url: String,
-  config: &SuiteConfig,
-) -> Result<(), StaleOracle> {
   let (venue, cache) = build_venue::<V>(rpc_url, config.pool).await;
   let (mut litesvm, keypair) = setup_litesvm(&config.programs);
   sync_clock(&cache, &mut litesvm).await;
@@ -521,7 +450,7 @@ async fn bound_simulation_attempt<V: SuiteVenue>(
         &mut litesvm,
         &keypair,
       )
-      .await?;
+      .await;
       let quote = venue.quote(request).unwrap();
       assert_eq!(
         quote.expected_output.abs_diff(sim),
@@ -532,7 +461,6 @@ async fn bound_simulation_attempt<V: SuiteVenue>(
       );
     }
   }
-  Ok(())
 }
 
 /// Random-sample simulation: across the whole valid range, the off-chain quote
@@ -545,16 +473,6 @@ pub async fn random_samples<V: SuiteVenue>(config: &SuiteConfig) {
   if !programs_ready(&config.programs) {
     return;
   }
-  retry_stale_snapshots("random_samples", || {
-    random_samples_attempt::<V>(rpc_url.clone(), config)
-  })
-  .await;
-}
-
-async fn random_samples_attempt<V: SuiteVenue>(
-  rpc_url: String,
-  config: &SuiteConfig,
-) -> Result<(), StaleOracle> {
   let (venue, cache) = build_venue::<V>(rpc_url, config.pool).await;
   let (mut litesvm, keypair) = setup_litesvm(&config.programs);
   sync_clock(&cache, &mut litesvm).await;
@@ -579,7 +497,7 @@ async fn random_samples_attempt<V: SuiteVenue>(
         &mut litesvm,
         &keypair,
       )
-      .await?;
+      .await;
       let quote = venue.quote(request).unwrap();
       assert_eq!(
         quote.expected_output.abs_diff(sim),
@@ -590,7 +508,6 @@ async fn random_samples_attempt<V: SuiteVenue>(
       );
     }
   }
-  Ok(())
 }
 
 /// Output monotonicity: a larger `ExactIn` amount never returns less output.
