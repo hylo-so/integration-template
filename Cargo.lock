@@ -2160,7 +2160,8 @@ dependencies = [
 [[package]]
 name = "hylo-clients"
 version = "2.3.7"
-source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#f94cbe8c8031e26dfde6321b5d4fc28143ebecec"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e99acc48db3e3acc55c892f6e258173b9d987c78001e5e19655520e9a1bdf7f"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2187,7 +2188,8 @@ dependencies = [
 [[package]]
 name = "hylo-core"
 version = "2.3.7"
-source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#f94cbe8c8031e26dfde6321b5d4fc28143ebecec"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0f05f1d89bd3815a2f83a00b15406e05c4cda961635dc5aad20365751ceb382"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2220,7 +2222,8 @@ dependencies = [
 [[package]]
 name = "hylo-idl"
 version = "2.3.7"
-source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#f94cbe8c8031e26dfde6321b5d4fc28143ebecec"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86928c3d5d600ec0b51513e0c4d29ec00c07861923ab3ad5d4f3c53e8bcf9ad3"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2250,7 +2253,8 @@ dependencies = [
 [[package]]
 name = "hylo-quotes"
 version = "2.3.7"
-source = "git+ssh://git@github.com/hylo-so/sdk?branch=fix%2Fmax-scaled-input-saturate#f94cbe8c8031e26dfde6321b5d4fc28143ebecec"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bf133c0a52b78c7278ec5606a32ad456e54a47112b152caacdf051fd9520655"
 dependencies = [
  "anchor-client",
  "anchor-lang",

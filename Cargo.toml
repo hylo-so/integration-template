@@ -51,10 +51,3 @@ hylo-quotes = "2.3.7"
 inherits = "release"
 debug-assertions = true
 overflow-checks = false
-
-
-[patch.crates-io]
-hylo-core = { git = "ssh://git@github.com/hylo-so/sdk", branch = "fix/max-scaled-input-saturate" }
-hylo-idl = { git = "ssh://git@github.com/hylo-so/sdk", branch = "fix/max-scaled-input-saturate" }
-hylo-quotes = { git = "ssh://git@github.com/hylo-so/sdk", branch = "fix/max-scaled-input-saturate" }
-hylo-clients = { git = "ssh://git@github.com/hylo-so/sdk", branch = "fix/max-scaled-input-saturate" }
