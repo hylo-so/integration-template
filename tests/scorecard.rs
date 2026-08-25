@@ -22,9 +22,6 @@ fn read(rel: &str) -> String {
 }
 
 /// Whether the program binaries the simulation tests need are dumped.
-///
-/// Names come from the IDL constants rather than literals so the check
-/// follows the `shadow` feature, which swaps every program ID.
 fn programs_present() -> bool {
   [exchange::ID_CONST, router::ID_CONST, earn_pool::ID_CONST]
     .iter()
