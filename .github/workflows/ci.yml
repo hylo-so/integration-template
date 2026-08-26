@@ -37,6 +37,11 @@ jobs:
     - uses: DeterminateSystems/nix-installer-action@main
     - uses: DeterminateSystems/magic-nix-cache-action@v13
     - uses: mozilla-actions/sccache-action@v0.0.10
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: |
+          . -> target
+          program-template -> target
 
     - name: Check RPC secret
       run: |
