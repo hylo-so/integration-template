@@ -37,7 +37,7 @@ use titan_integration_template::trading_venue::{
   FromAccount, QuoteRequest, SwapType, TradingVenue,
 };
 use tokio_retry::Retry;
-use tokio_retry::strategy::{ExponentialBackoff, jitter};
+use tokio_retry::strategy::{FixedInterval, jitter};
 
 /// Bound shared by every suite function: a venue that can be built from an
 /// account and quoted, usable across `.await` points.
@@ -148,7 +148,7 @@ fn geometric_grid(lb: u64, ub: u64, n: usize) -> Vec<u64> {
 }
 
 fn retry_policy() -> impl Iterator<Item = Duration> {
-  ExponentialBackoff::from_millis(500).map(jitter).take(3)
+  FixedInterval::from_millis(15_000).map(jitter).take(4)
 }
 
 /// Skips directions the venue reports unquotable.
