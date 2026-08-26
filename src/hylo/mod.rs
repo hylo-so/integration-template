@@ -2,14 +2,12 @@ mod error;
 mod instructions;
 mod quotes;
 
-use self::error::error_chain;
-use self::quotes::RuntimeQuote;
-
 use anchor_lang::AccountDeserialize;
 use async_trait::async_trait;
 use hylo_idl::exchange::accounts::Hylo;
 use hylo_idl::tokens::{
-  CBBTC, HYLOSOL, HYUSD, JITOSOL, SHYUSD, TokenMint, USDC, XBTC, XSOL,
+  CBBTC, HYLOSOL, HYPE, HYUSD, JITOSOL, SHYUSD, TokenMint, USDC, XBTC, XHYPE,
+  XSOL,
 };
 use hylo_idl::{earn_pool, exchange, pda, router};
 use hylo_quotes::prelude::ProtocolState;
@@ -19,6 +17,8 @@ use solana_instruction::Instruction;
 use solana_program::clock::Clock;
 use solana_pubkey::Pubkey;
 
+use self::error::error_chain;
+use self::quotes::RuntimeQuote;
 use crate::account_caching::AccountsCache;
 use crate::trading_venue::error::TradingVenueError;
 use crate::trading_venue::protocol::PoolProtocol;
@@ -29,7 +29,7 @@ use crate::trading_venue::{
 };
 
 /// Bidirectional swap pairs supported by Hylo router.
-pub const PAIRS: [[Pubkey; 2]; 14] = [
+pub const PAIRS: [[Pubkey; 2]; 18] = [
   [JITOSOL::MINT, HYUSD::MINT],
   [JITOSOL::MINT, XSOL::MINT],
   [JITOSOL::MINT, HYLOSOL::MINT],
@@ -40,9 +40,13 @@ pub const PAIRS: [[Pubkey; 2]; 14] = [
   [CBBTC::MINT, HYUSD::MINT],
   [CBBTC::MINT, XBTC::MINT],
   [CBBTC::MINT, USDC::MINT],
+  [HYPE::MINT, HYUSD::MINT],
+  [HYPE::MINT, XHYPE::MINT],
+  [HYPE::MINT, USDC::MINT],
   [USDC::MINT, HYUSD::MINT],
   [HYUSD::MINT, XSOL::MINT],
   [HYUSD::MINT, XBTC::MINT],
+  [HYUSD::MINT, XHYPE::MINT],
   [HYUSD::MINT, SHYUSD::MINT],
 ];
 
@@ -77,23 +81,37 @@ struct ExternalMints<'a> {
   hylosol: &'a Account,
   usdc: &'a Account,
   cbbtc: &'a Account,
+  hype: &'a Account,
 }
 
 impl<'a> ExternalMints<'a> {
-  const PUBKEYS: [Pubkey; 4] =
-    [JITOSOL::MINT, HYLOSOL::MINT, USDC::MINT, CBBTC::MINT];
+  const PUBKEYS: [Pubkey; 5] = [
+    JITOSOL::MINT,
+    HYLOSOL::MINT,
+    USDC::MINT,
+    CBBTC::MINT,
+    HYPE::MINT,
+  ];
 
   /// Borrows a fetched account list, erroring with the key of the first
   /// missing account.
   fn from_fetched(
     fetched: &'a [Option<Account>],
   ) -> Result<Self, TradingVenueError> {
-    if let [Some(jitosol), Some(hylosol), Some(usdc), Some(cbbtc)] = fetched {
+    if let [
+      Some(jitosol),
+      Some(hylosol),
+      Some(usdc),
+      Some(cbbtc),
+      Some(hype),
+    ] = fetched
+    {
       Ok(ExternalMints {
         jitosol,
         hylosol,
         usdc,
         cbbtc,
+        hype,
       })
     } else {
       let (key, _) = Self::PUBKEYS
@@ -242,6 +260,7 @@ impl TradingVenue for HyloRouter {
       hylosol,
       usdc,
       cbbtc,
+      hype,
     } = ExternalMints::from_fetched(external)?;
 
     // Epoch information
@@ -265,6 +284,8 @@ impl TradingVenue for HyloRouter {
       TokenInfo::new(&USDC::MINT, usdc, epoch)?,
       TokenInfo::new(&CBBTC::MINT, cbbtc, epoch)?,
       TokenInfo::new(&XBTC::MINT, &protocol_accounts.xbtc_mint, epoch)?,
+      TokenInfo::new(&HYPE::MINT, hype, epoch)?,
+      TokenInfo::new(&XHYPE::MINT, &protocol_accounts.xhype_mint, epoch)?,
     ];
     self.initialized = true;
     Ok(())

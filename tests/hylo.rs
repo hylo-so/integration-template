@@ -2,6 +2,7 @@ mod common;
 
 use common::SuiteConfig;
 use hylo_idl::{earn_pool, exchange, pda, router};
+use litesvm::types::FailedTransactionMetadata;
 use solana_pubkey::Pubkey;
 use titan_integration_template::hylo::HyloRouter;
 
@@ -39,13 +40,13 @@ async fn zero_input_spot_price() {
 }
 
 #[tokio::test]
-async fn bound_simulation() {
-  common::bound_simulation::<HyloRouter>(&config()).await;
+async fn bound_simulation() -> Result<(), FailedTransactionMetadata> {
+  common::bound_simulation::<HyloRouter>(&config()).await
 }
 
 #[tokio::test]
-async fn random_samples() {
-  common::random_samples::<HyloRouter>(&config()).await;
+async fn random_samples() -> Result<(), FailedTransactionMetadata> {
+  common::random_samples::<HyloRouter>(&config()).await
 }
 
 #[tokio::test]

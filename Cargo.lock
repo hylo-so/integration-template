@@ -2159,9 +2159,9 @@ dependencies = [
 
 [[package]]
 name = "hylo-clients"
-version = "2.1.0"
+version = "2.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e39998713a301e5bd1515b4dced7487f6c102360a6a2b00f7c6d74a58f11d7f"
+checksum = "9e99acc48db3e3acc55c892f6e258173b9d987c78001e5e19655520e9a1bdf7f"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -2187,12 +2187,13 @@ dependencies = [
 
 [[package]]
 name = "hylo-core"
-version = "2.1.0"
+version = "2.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35dbdc00b5435a315cd507e1c596693378cf548f005e8101d1827a08d56ba72a"
+checksum = "b0f05f1d89bd3815a2f83a00b15406e05c4cda961635dc5aad20365751ceb382"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "const-crypto",
  "hylo-fix",
  "hylo-idl",
  "hylo-jupiter-amm-interface",
@@ -2220,9 +2221,9 @@ dependencies = [
 
 [[package]]
 name = "hylo-idl"
-version = "2.1.0"
+version = "2.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6c59e18b707706dd5ef8e1c260a51b1fe1b61cffe4ce9aa0d19f1b76134903c"
+checksum = "86928c3d5d600ec0b51513e0c4d29ec00c07861923ab3ad5d4f3c53e8bcf9ad3"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2251,9 +2252,9 @@ dependencies = [
 
 [[package]]
 name = "hylo-quotes"
-version = "2.1.0"
+version = "2.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24d1f778ed42d0e47a7e174e6fa2a51e808c81835773849f1d32f47d12629d6c"
+checksum = "3bf133c0a52b78c7278ec5606a32ad456e54a47112b152caacdf051fd9520655"
 dependencies = [
  "anchor-client",
  "anchor-lang",
@@ -7786,6 +7787,7 @@ dependencies = [
  "spl-token-2022 9.0.0",
  "thiserror 1.0.69",
  "tokio",
+ "tokio-retry",
 ]
 
 [[package]]
@@ -7814,6 +7816,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.118",
+]
+
+[[package]]
+name = "tokio-retry"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a129d95275ebf4c493ec53bf0f8cd95f5ac161bc4f381700809a54f595d4470"
+dependencies = [
+ "pin-project-lite",
+ "rand 0.10.2",
+ "tokio",
 ]
 
 [[package]]

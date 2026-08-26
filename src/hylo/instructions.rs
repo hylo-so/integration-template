@@ -1,4 +1,5 @@
 use anchor_lang::ToAccountMetas;
+use hylo_core::pyth::PythOracle;
 use hylo_idl::earn_pool::account_builders::{deposit, withdraw};
 use hylo_idl::exchange::account_builders::{
   convert_lever_to_stable_exo, convert_lever_to_stable_lst,
@@ -9,12 +10,11 @@ use hylo_idl::exchange::account_builders::{
   swap_exo_to_usdc, swap_lst_to_lst, swap_lst_to_usdc, swap_usdc_to_exo,
   swap_usdc_to_lst,
 };
-use hylo_idl::pda::BTC_USD_PYTH_FEED;
 use hylo_idl::router::client::args::Route;
 use hylo_idl::router::instruction_builders::route;
 use hylo_idl::tokens::{
-  CBBTC, HYLOSOL, HYUSD, JITOSOL, SHYUSD, StakePool, TokenMint, USDC, XBTC,
-  XSOL,
+  CBBTC, HYLOSOL, HYPE, HYUSD, JITOSOL, SHYUSD, StakePool, TokenMint, USDC,
+  XBTC, XHYPE, XSOL,
 };
 use solana_instruction::Instruction;
 use solana_pubkey::Pubkey;
@@ -61,27 +61,51 @@ pub fn swap_instruction(
       swap_lst_to_lst(user, HYLOSOL::MINT, JITOSOL::MINT).to_account_metas(None)
     }
     (CBBTC::MINT, HYUSD::MINT) => {
-      mint_stablecoin_exo(user, CBBTC::MINT, BTC_USD_PYTH_FEED)
+      mint_stablecoin_exo(user, CBBTC::MINT, CBBTC::FEED.address)
         .to_account_metas(None)
     }
     (CBBTC::MINT, XBTC::MINT) => {
-      mint_levercoin_exo(user, CBBTC::MINT, BTC_USD_PYTH_FEED)
+      mint_levercoin_exo(user, CBBTC::MINT, CBBTC::FEED.address)
         .to_account_metas(None)
     }
     (HYUSD::MINT, CBBTC::MINT) => {
-      redeem_stablecoin_exo(user, CBBTC::MINT, BTC_USD_PYTH_FEED)
+      redeem_stablecoin_exo(user, CBBTC::MINT, CBBTC::FEED.address)
         .to_account_metas(None)
     }
     (XBTC::MINT, CBBTC::MINT) => {
-      redeem_levercoin_exo(user, CBBTC::MINT, BTC_USD_PYTH_FEED)
+      redeem_levercoin_exo(user, CBBTC::MINT, CBBTC::FEED.address)
         .to_account_metas(None)
     }
     (HYUSD::MINT, XBTC::MINT) => {
-      convert_stable_to_lever_exo(user, CBBTC::MINT, BTC_USD_PYTH_FEED)
+      convert_stable_to_lever_exo(user, CBBTC::MINT, CBBTC::FEED.address)
         .to_account_metas(None)
     }
     (XBTC::MINT, HYUSD::MINT) => {
-      convert_lever_to_stable_exo(user, CBBTC::MINT, BTC_USD_PYTH_FEED)
+      convert_lever_to_stable_exo(user, CBBTC::MINT, CBBTC::FEED.address)
+        .to_account_metas(None)
+    }
+    (HYPE::MINT, HYUSD::MINT) => {
+      mint_stablecoin_exo(user, HYPE::MINT, HYPE::FEED.address)
+        .to_account_metas(None)
+    }
+    (HYPE::MINT, XHYPE::MINT) => {
+      mint_levercoin_exo(user, HYPE::MINT, HYPE::FEED.address)
+        .to_account_metas(None)
+    }
+    (HYUSD::MINT, HYPE::MINT) => {
+      redeem_stablecoin_exo(user, HYPE::MINT, HYPE::FEED.address)
+        .to_account_metas(None)
+    }
+    (XHYPE::MINT, HYPE::MINT) => {
+      redeem_levercoin_exo(user, HYPE::MINT, HYPE::FEED.address)
+        .to_account_metas(None)
+    }
+    (HYUSD::MINT, XHYPE::MINT) => {
+      convert_stable_to_lever_exo(user, HYPE::MINT, HYPE::FEED.address)
+        .to_account_metas(None)
+    }
+    (XHYPE::MINT, HYUSD::MINT) => {
+      convert_lever_to_stable_exo(user, HYPE::MINT, HYPE::FEED.address)
         .to_account_metas(None)
     }
     (JITOSOL::MINT, USDC::MINT) => {
@@ -101,11 +125,19 @@ pub fn swap_instruction(
         .to_account_metas(None)
     }
     (CBBTC::MINT, USDC::MINT) => {
-      swap_exo_to_usdc(user, CBBTC::MINT, BTC_USD_PYTH_FEED)
+      swap_exo_to_usdc(user, CBBTC::MINT, CBBTC::FEED.address)
         .to_account_metas(None)
     }
     (USDC::MINT, CBBTC::MINT) => {
-      swap_usdc_to_exo(user, CBBTC::MINT, BTC_USD_PYTH_FEED)
+      swap_usdc_to_exo(user, CBBTC::MINT, CBBTC::FEED.address)
+        .to_account_metas(None)
+    }
+    (HYPE::MINT, USDC::MINT) => {
+      swap_exo_to_usdc(user, HYPE::MINT, HYPE::FEED.address)
+        .to_account_metas(None)
+    }
+    (USDC::MINT, HYPE::MINT) => {
+      swap_usdc_to_exo(user, HYPE::MINT, HYPE::FEED.address)
         .to_account_metas(None)
     }
     (USDC::MINT, HYUSD::MINT) => {

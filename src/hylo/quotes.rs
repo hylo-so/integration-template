@@ -1,6 +1,7 @@
 use fix::prelude::UFix64;
 use hylo_idl::tokens::{
-  CBBTC, HYLOSOL, HYUSD, JITOSOL, SHYUSD, TokenMint, USDC, XBTC, XSOL,
+  CBBTC, HYLOSOL, HYPE, HYUSD, JITOSOL, SHYUSD, TokenMint, USDC, XBTC, XHYPE,
+  XSOL,
 };
 use hylo_quotes::prelude::ProtocolState;
 use hylo_quotes::token_operation::TokenOperationExt;
@@ -58,12 +59,20 @@ pub fn runtime_quote(
     (XBTC::MINT, CBBTC::MINT) => out!(state, amount, XBTC, CBBTC),
     (HYUSD::MINT, XBTC::MINT) => out!(state, amount, HYUSD, XBTC),
     (XBTC::MINT, HYUSD::MINT) => out!(state, amount, XBTC, HYUSD),
+    (HYPE::MINT, HYUSD::MINT) => out!(state, amount, HYPE, HYUSD),
+    (HYPE::MINT, XHYPE::MINT) => out!(state, amount, HYPE, XHYPE),
+    (HYUSD::MINT, HYPE::MINT) => out!(state, amount, HYUSD, HYPE),
+    (XHYPE::MINT, HYPE::MINT) => out!(state, amount, XHYPE, HYPE),
+    (HYUSD::MINT, XHYPE::MINT) => out!(state, amount, HYUSD, XHYPE),
+    (XHYPE::MINT, HYUSD::MINT) => out!(state, amount, XHYPE, HYUSD),
     (JITOSOL::MINT, USDC::MINT) => out!(state, amount, JITOSOL, USDC),
     (HYLOSOL::MINT, USDC::MINT) => out!(state, amount, HYLOSOL, USDC),
     (USDC::MINT, JITOSOL::MINT) => out!(state, amount, USDC, JITOSOL),
     (USDC::MINT, HYLOSOL::MINT) => out!(state, amount, USDC, HYLOSOL),
     (CBBTC::MINT, USDC::MINT) => out!(state, amount, CBBTC, USDC),
     (USDC::MINT, CBBTC::MINT) => out!(state, amount, USDC, CBBTC),
+    (HYPE::MINT, USDC::MINT) => out!(state, amount, HYPE, USDC),
+    (USDC::MINT, HYPE::MINT) => out!(state, amount, USDC, HYPE),
     (USDC::MINT, HYUSD::MINT) => out!(state, amount, USDC, HYUSD),
     (HYUSD::MINT, USDC::MINT) => out!(state, amount, HYUSD, USDC),
     (HYUSD::MINT, SHYUSD::MINT) => out!(state, amount, HYUSD, SHYUSD),

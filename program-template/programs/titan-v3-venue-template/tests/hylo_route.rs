@@ -2,6 +2,7 @@ mod common;
 
 use common::{run_swap_route, RouteConfig};
 use hylo_idl::{earn_pool, exchange, pda, router};
+use litesvm::types::FailedTransactionMetadata;
 use solana_pubkey::Pubkey;
 use titan_integration_template::hylo::HyloRouter;
 
@@ -15,10 +16,10 @@ fn venue_programs() -> Vec<Pubkey> {
 }
 
 #[tokio::test]
-async fn swap_route_both_directions() {
+async fn swap_route_both_directions() -> Result<(), FailedTransactionMetadata> {
   run_swap_route::<HyloRouter>(RouteConfig {
     pool: pool(),
     venue_programs: venue_programs(),
   })
-  .await;
+  .await
 }
