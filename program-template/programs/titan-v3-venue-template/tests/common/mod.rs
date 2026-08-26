@@ -12,17 +12,20 @@
 
 #![allow(dead_code)] // each test binary uses a subset of these helpers.
 
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 use std::{env, fs};
 
+use litesvm::types::FailedTransactionMetadata;
 use litesvm::LiteSVM;
 use solana_account::{Account, ReadableAccount, WritableAccount};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_compute_budget::compute_budget::ComputeBudget;
 use solana_instruction::{AccountMeta, Instruction};
 use solana_program::native_token::LAMPORTS_PER_SOL;
+use solana_program::program_error::ProgramError;
 use solana_program_pack::Pack;
 use solana_pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
@@ -42,6 +45,8 @@ use titan_integration_template::trading_venue::{
   FromAccount, QuoteRequest, SwapType, TradingVenue,
 };
 use titan_v3_venue_template::state::TitanPda;
+use tokio_retry::strategy::{jitter, FixedInterval};
+use tokio_retry::Retry;
 
 const SAMPLE_COUNT: usize = 10;
 
@@ -400,23 +405,20 @@ fn simulated_output_amount(
   payer: &Keypair,
   output_ata: Pubkey,
   ix: Instruction,
-) -> u64 {
+) -> Result<u64, FailedTransactionMetadata> {
   let tx = Transaction::new_signed_with_payer(
     &[ix],
     Some(&payer.pubkey()),
     &[payer],
     litesvm.latest_blockhash(),
   );
-  let simulation_result = litesvm.simulate_transaction(tx).unwrap();
-  let output_account = simulation_result
+  let (_, output_account) = litesvm
+    .simulate_transaction(tx)?
     .post_accounts
     .into_iter()
     .find(|(pubkey, _)| pubkey == &output_ata)
-    .map(|(_, account)| account)
-    .unwrap();
-  TokenAccount::unpack_from_slice(output_account.data())
-    .unwrap()
-    .amount
+    .ok_or(ProgramError::InvalidAccountData)?;
+  Ok(TokenAccount::unpack_from_slice(output_account.data())?.amount)
 }
 
 /// Circulating supply of `mint`, the hard ceiling for any input amount:
@@ -443,49 +445,76 @@ fn sample_amounts(lower: u64, upper: u64) -> Vec<u64> {
     .collect()
 }
 
+fn skip(reason: impl Display) {
+  eprintln!("SKIP {}: {reason}", current_test());
+}
+
+/// RPC endpoint, built route program, and dumped venue programs — or `None`
+/// once a missing prerequisite has been reported.
+fn prerequisites(
+  config: &RouteConfig,
+) -> Option<(String, PathBuf, Vec<(Pubkey, PathBuf)>)> {
+  let rpc_url = env::var("SOLANA_RPC_URL")
+    .inspect_err(|_| skip("set SOLANA_RPC_URL to run this swap-route test"))
+    .ok()?;
+
+  let route_so = workspace_path("target/deploy/titan_v3_venue_template.so");
+  route_so.exists().then_some(()).or_else(|| {
+    skip(format_args!(
+      "missing {} — run `make build-program` from the repo root",
+      route_so.display()
+    ));
+    None
+  })?;
+  ensure_route_program_is_fresh(&route_so)
+    .inspect_err(|reason| skip(reason))
+    .ok()?;
+
+  let venue_dumps = config
+    .venue_programs
+    .iter()
+    .map(|program| {
+      let path = workspace_path(format!("program-dumps/{program}.so"));
+      ensure_program_dump(*program, &path, &rpc_url)
+        .inspect_err(|reason| skip(reason))
+        .ok()
+        .map(|()| (*program, path))
+    })
+    .collect::<Option<Vec<_>>>()?;
+
+  Some((rpc_url, route_so, venue_dumps))
+}
+
 /// Execute `swap_route_v3` against the venue across every declared direction
 /// and a range of sizes, asserting the simulated output matches the off-chain
 /// quote.
-pub async fn run_swap_route<V: RouteVenue>(config: RouteConfig) {
+pub async fn run_swap_route<V: RouteVenue>(
+  config: RouteConfig,
+) -> Result<(), FailedTransactionMetadata> {
   init_test_logger();
-
-  // (a) RPC endpoint.
-  let Ok(rpc_url) = env::var("SOLANA_RPC_URL") else {
-    eprintln!(
-      "SKIP {}: set SOLANA_RPC_URL to run this swap-route test",
-      current_test()
-    );
-    return;
-  };
-
-  // (b) the built route program.
-  let route_so = workspace_path("target/deploy/titan_v3_venue_template.so");
-  if !route_so.exists() {
-    eprintln!(
-      "SKIP {}: missing {} — run `make build-program` from the repo root",
-      current_test(),
-      route_so.display()
-    );
-    return;
-  }
-  if let Err(reason) = ensure_route_program_is_fresh(&route_so) {
-    eprintln!("SKIP {}: {reason}", current_test());
-    return;
-  }
-
-  // (c) the venue program binaries (dumped from the network).
-  let mut venue_dumps = Vec::new();
-  for program in &config.venue_programs {
-    let path = workspace_path(format!("program-dumps/{program}.so"));
-    if let Err(reason) = ensure_program_dump(*program, &path, &rpc_url) {
-      eprintln!("SKIP {}: {reason}", current_test());
-      return;
+  match prerequisites(&config) {
+    Some((rpc_url, route_so, venue_dumps)) => {
+      Retry::start(retry_policy(), || {
+        swap_route_attempt::<V>(&config, &rpc_url, &route_so, &venue_dumps)
+      })
+      .await
     }
-    venue_dumps.push((*program, path));
+    None => Ok(()),
   }
+}
 
+fn retry_policy() -> impl Iterator<Item = Duration> {
+  FixedInterval::from_millis(15_000).map(jitter).take(4)
+}
+
+async fn swap_route_attempt<V: RouteVenue>(
+  config: &RouteConfig,
+  rpc_url: &str,
+  route_so: &Path,
+  venue_dumps: &[(Pubkey, PathBuf)],
+) -> Result<(), FailedTransactionMetadata> {
   // Build the venue from live state.
-  let rpc = RpcClient::new(rpc_url);
+  let rpc = RpcClient::new(rpc_url.to_string());
   let venue_account = rpc
     .get_account(&config.pool)
     .await
@@ -503,7 +532,7 @@ pub async fn run_swap_route<V: RouteVenue>(config: RouteConfig) {
   litesvm
     .add_program_from_file(titan_v3_venue_template::ID, &route_so)
     .unwrap();
-  for (program, path) in &venue_dumps {
+  for (program, path) in venue_dumps {
     litesvm.add_program_from_file(*program, path).unwrap();
   }
 
@@ -563,7 +592,7 @@ pub async fn run_swap_route<V: RouteVenue>(config: RouteConfig) {
         &output_token.get_token_program(),
       );
       let simulated =
-        simulated_output_amount(&mut litesvm, &payer, output_ata, route_ix);
+        simulated_output_amount(&mut litesvm, &payer, output_ata, route_ix)?;
 
       println!(
         "[{input_mint} -> {output_mint}] amount={amount} quote={} sim={}",
@@ -576,4 +605,5 @@ pub async fn run_swap_route<V: RouteVenue>(config: RouteConfig) {
       );
     }
   }
+  Ok(())
 }

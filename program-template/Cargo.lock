@@ -7838,6 +7838,7 @@ dependencies = [
  "spl-token-2022 9.0.0",
  "titan-integration-template",
  "tokio",
+ "tokio-retry",
 ]
 
 [[package]]
