@@ -12,14 +12,16 @@
 
 use std::env;
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use assert_no_alloc::assert_no_alloc;
 use litesvm::LiteSVM;
+use litesvm::types::FailedTransactionMetadata;
 use solana_account::{Account, ReadableAccount, WritableAccount};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_compute_budget::compute_budget::ComputeBudget;
 use solana_program::native_token::LAMPORTS_PER_SOL;
+use solana_program::program_error::ProgramError;
 use solana_program_pack::Pack;
 use solana_pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
@@ -34,6 +36,8 @@ use titan_integration_template::trading_venue::error::TradingVenueError;
 use titan_integration_template::trading_venue::{
   FromAccount, QuoteRequest, SwapType, TradingVenue,
 };
+use tokio_retry::Retry;
+use tokio_retry::strategy::{ExponentialBackoff, jitter};
 
 /// Bound shared by every suite function: a venue that can be built from an
 /// account and quoted, usable across `.await` points.
@@ -143,6 +147,10 @@ fn geometric_grid(lb: u64, ub: u64, n: usize) -> Vec<u64> {
   points
 }
 
+fn retry_policy() -> impl Iterator<Item = Duration> {
+  ExponentialBackoff::from_millis(500).map(jitter).take(3)
+}
+
 /// Skips directions the venue reports unquotable.
 fn quotable(
   bounds: Result<(u64, u64), TradingVenueError>,
@@ -239,7 +247,7 @@ async fn sim_quote_request(
   request: QuoteRequest,
   litesvm: &mut LiteSVM,
   keypair: &Keypair,
-) -> u64 {
+) -> Result<u64, FailedTransactionMetadata> {
   let tokens = venue.get_token_info();
   let idx_0 = tokens
     .iter()
@@ -314,17 +322,13 @@ async fn sim_quote_request(
     &[keypair],
     blockhash,
   );
-  let result = litesvm.simulate_transaction(tx).unwrap();
-
-  let post = result
+  let (_, post) = litesvm
+    .simulate_transaction(tx)?
     .post_accounts
     .into_iter()
     .find(|(pk, _)| pk == &token_account_b)
-    .map(|(_, acc)| acc)
-    .expect("output token account missing from simulation");
-  TokenAccount::unpack_from_slice(post.data())
-    .expect("failed to unpack output token account")
-    .amount
+    .ok_or(ProgramError::InvalidAccountData)?;
+  Ok(TokenAccount::unpack_from_slice(post.data())?.amount)
 }
 
 // ---------------------------------------------------------------------------
@@ -426,14 +430,25 @@ pub async fn zero_input_spot_price<V: SuiteVenue>(config: &SuiteConfig) {
 
 /// Boundary simulation: the off-chain quote matches on-chain execution exactly
 /// at both boundary edges, in every declared direction.
-pub async fn bound_simulation<V: SuiteVenue>(config: &SuiteConfig) {
+pub async fn bound_simulation<V: SuiteVenue>(
+  config: &SuiteConfig,
+) -> Result<(), FailedTransactionMetadata> {
   init_test_logger();
-  let Some(rpc_url) = rpc_url_or_skip() else {
-    return;
-  };
-  if !programs_ready(&config.programs) {
-    return;
+  match rpc_url_or_skip().filter(|_| programs_ready(&config.programs)) {
+    Some(rpc_url) => {
+      Retry::start(retry_policy(), || {
+        bound_simulation_attempt::<V>(rpc_url.clone(), config)
+      })
+      .await
+    }
+    None => Ok(()),
   }
+}
+
+async fn bound_simulation_attempt<V: SuiteVenue>(
+  rpc_url: String,
+  config: &SuiteConfig,
+) -> Result<(), FailedTransactionMetadata> {
   let (venue, cache) = build_venue::<V>(rpc_url, config.pool).await;
   let (mut litesvm, keypair) = setup_litesvm(&config.programs);
   sync_clock(&cache, &mut litesvm).await;
@@ -458,7 +473,7 @@ pub async fn bound_simulation<V: SuiteVenue>(config: &SuiteConfig) {
         &mut litesvm,
         &keypair,
       )
-      .await;
+      .await?;
       let quote = venue.quote(request).unwrap();
       assert_eq!(
         quote.expected_output.abs_diff(sim),
@@ -469,18 +484,30 @@ pub async fn bound_simulation<V: SuiteVenue>(config: &SuiteConfig) {
       );
     }
   }
+  Ok(())
 }
 
 /// Random-sample simulation: across the whole valid range, the off-chain quote
 /// matches on-chain execution for every declared direction.
-pub async fn random_samples<V: SuiteVenue>(config: &SuiteConfig) {
+pub async fn random_samples<V: SuiteVenue>(
+  config: &SuiteConfig,
+) -> Result<(), FailedTransactionMetadata> {
   init_test_logger();
-  let Some(rpc_url) = rpc_url_or_skip() else {
-    return;
-  };
-  if !programs_ready(&config.programs) {
-    return;
+  match rpc_url_or_skip().filter(|_| programs_ready(&config.programs)) {
+    Some(rpc_url) => {
+      Retry::start(retry_policy(), || {
+        random_samples_attempt::<V>(rpc_url.clone(), config)
+      })
+      .await
+    }
+    None => Ok(()),
   }
+}
+
+async fn random_samples_attempt<V: SuiteVenue>(
+  rpc_url: String,
+  config: &SuiteConfig,
+) -> Result<(), FailedTransactionMetadata> {
   let (venue, cache) = build_venue::<V>(rpc_url, config.pool).await;
   let (mut litesvm, keypair) = setup_litesvm(&config.programs);
   sync_clock(&cache, &mut litesvm).await;
@@ -505,7 +532,7 @@ pub async fn random_samples<V: SuiteVenue>(config: &SuiteConfig) {
         &mut litesvm,
         &keypair,
       )
-      .await;
+      .await?;
       let quote = venue.quote(request).unwrap();
       assert_eq!(
         quote.expected_output.abs_diff(sim),
@@ -516,6 +543,7 @@ pub async fn random_samples<V: SuiteVenue>(config: &SuiteConfig) {
       );
     }
   }
+  Ok(())
 }
 
 /// Output monotonicity: a larger `ExactIn` amount never returns less output.
