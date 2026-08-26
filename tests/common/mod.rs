@@ -350,13 +350,21 @@ pub async fn construction<V: SuiteVenue>(config: &SuiteConfig) {
   );
 
   for (in_idx, out_idx) in venue.directions_num() {
-    let Some((lower, upper)) = quotable(
-      assert_no_alloc(|| venue.bounds(in_idx, out_idx)),
-      in_idx,
-      out_idx,
-    ) else {
+    // Quotability is decided unguarded: an unquotable direction formats
+    // its reason into the error, which allocates by design. Only the
+    // successful bounds path carries the no-alloc contract, so it is
+    // re-run under the guard once the direction is known quotable.
+    let Some((lower, upper)) =
+      quotable(venue.bounds(in_idx, out_idx), in_idx, out_idx)
+    else {
       continue;
     };
+    let guarded = assert_no_alloc(|| venue.bounds(in_idx, out_idx));
+    assert_eq!(
+      guarded.ok(),
+      Some((lower, upper)),
+      "bounds changed between unguarded and guarded evaluation"
+    );
     assert!(lower < upper, "lower bound must be < upper bound");
 
     let input_mint = venue.get_token(in_idx as usize).unwrap().pubkey;
