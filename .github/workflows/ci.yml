@@ -8,7 +8,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest-large
+    runs-on: ubuntu-latest
     permissions:
       id-token: "write"
       contents: "read"
@@ -38,32 +38,27 @@ jobs:
     - uses: DeterminateSystems/magic-nix-cache-action@v13
     - uses: mozilla-actions/sccache-action@v0.0.10
 
-    - name: Require the RPC secret
+    - name: Check RPC secret
       run: |
         if [ -z "${SOLANA_RPC_URL}" ]; then
-          echo "::error::secrets.SOLANA_RPC_URL is unset — every venue test would SKIP"
+          echo "::error::SOLANA_RPC_URL secret missing"
           exit 1
         fi
 
     - run: nix run .#test-structure
 
-    # Produces program-template/target/deploy/titan_v3_venue_template.so, which
-    # hylo_route loads into LiteSVM. Its freshness check compares the binary's
-    # mtime against the newest program source, so this must run after checkout.
     - run: nix run .#build-program
 
-    # `make test-venue` reports red/skipped in a table and always exits 0, so
-    # the phase logs are what decide this job.
     - name: Venue suite
       run: nix run .#test-venue 2>&1 | tee venue.txt
 
-    - name: Require every venue phase to have run
+    - name: Check venue phases
       run: |
         off=target/log-venue-off.txt
         prog=target/log-venue-prog.txt
         status=0
         if grep -q 'SKIP' "$off" "$prog"; then
-          echo "::error::venue tests skipped — a prerequisite was missing"
+          echo "::error::venue tests skipped"
           status=1
         fi
         if grep -qE '^  [A-Za-z].{0,30}  (red|FAILED) ' venue.txt; then
